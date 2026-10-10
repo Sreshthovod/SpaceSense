@@ -24,6 +24,7 @@ def get_allowed_origin_regex() -> str | None:
 
 
 ROOM_TYPES = ("living room", "bedroom", "kitchen", "dining room", "home office", "kids room")
+DIRECTIONS = ("north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west")
 STYLES = ("modern-indian", "minimalist", "scandinavian", "contemporary-luxury", "boho", "industrial")
 
 PRODUCT_CATEGORIES = ("seating", "tables", "beds", "storage", "lighting", "rugs", "curtains", "decor")

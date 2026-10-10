@@ -25,6 +25,14 @@ describe('toRoomPayload', () => {
   })
 })
 
+describe('toRoomPayload (vastu direction)', () => {
+  it('sends entry_direction only when Vastu is on and a direction is chosen', () => {
+    expect(toRoomPayload({ ...form, entryDirection: 'north-east' }).entry_direction).toBe('north-east')
+    expect('entry_direction' in toRoomPayload({ ...form, entryDirection: '' })).toBe(false)
+    expect('entry_direction' in toRoomPayload({ ...form, vastu: false, entryDirection: 'east' })).toBe(false)
+  })
+})
+
 describe('fetchRoomPlan (consultation)', () => {
   it('sends the photo to /analyze-room and never calls /generate-design', async () => {
     const recommendations = { summary: 's', replace: ['Add a jute rug'] }

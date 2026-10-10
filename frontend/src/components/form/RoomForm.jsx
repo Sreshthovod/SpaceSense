@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Loader2, Wand2 } from 'lucide-react'
-import { ROOM_TYPES } from '../../data/sampleData'
+import { DIRECTIONS, ROOM_TYPES } from '../../data/sampleData'
 import { validateForm, validateImage, LIMITS } from '../../utils/validation'
 import { formatINR } from '../../utils/format'
 import ImageUploader from '../upload/ImageUploader'
@@ -57,6 +57,12 @@ export default function RoomForm({ form, setForm, image, setImage, onSubmit, sub
         <NumberField id="budget" label="Budget" prefix="₹" value={form.budget} onChange={set('budget')} error={errors.budget} min={LIMITS.budget[0]} max={LIMITS.budget[1]} step={1000}
           hint={form.budget ? formatINR(Number(form.budget)) : `Allowed range: ${formatINR(LIMITS.budget[0])} – ${formatINR(LIMITS.budget[1])}`} />
         <ToggleSwitch id="vastu" label="Vastu preferences" description="Include Vastu-aware placement notes (optional)." checked={form.vastu} onChange={set('vastu')} />
+        {form.vastu && (
+          <div>
+            <SelectField id="entryDirection" label="Direction you face when you walk in" value={form.entryDirection} onChange={set('entryDirection')} options={DIRECTIONS} required={false} placeholder="Not sure" />
+            <p className="mt-1 text-xs text-muted">Stand at the room's main door looking in and check a phone compass. This lets us say which wall is south, which corner is north-east, and so on, instead of generic tips.</p>
+          </div>
+        )}
       </Card>
       <Card className="lg:col-span-2">
         <StyleSelector value={form.style} onChange={set('style')} error={errors.style} />

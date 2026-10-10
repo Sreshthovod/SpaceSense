@@ -23,6 +23,7 @@ from schemas import (
     RoomRequest,
 )
 from services.images import ImageValidationError, RoomImage, max_upload_bytes, validate_image
+from services import vision
 from services.products import CATALOG_PATH, CatalogError, get_product_sources, load_catalog, recommend
 from services.providers import ProviderError, get_design_editor, get_room_analyzer, get_room_chat
 
@@ -142,10 +143,12 @@ async def analyze_room_endpoint(room: str = Form(...), photo: UploadFile = File(
     image = await read_photo(photo)
     analyzer = get_room_analyzer()
     try:
-        return await run_in_threadpool(analyzer.analyze, req, image)
+        analysis = await run_in_threadpool(analyzer.analyze, req, image)
     except ProviderError as exc:
         logger.error("Analysis provider error (%s): %s", exc.reason, exc)
         return provider_failure(exc, "analysis_failed", "The room analysis service failed. Please try again.")
+    analysis.photo_insights = await run_in_threadpool(vision.assess_photo, image)
+    return analysis
 
 
 @app.post("/chat", response_model=ChatReply)
@@ -177,10 +180,13 @@ async def generate_design(
     image = await read_photo(photo)
     editor = get_design_editor()
     try:
-        return await run_in_threadpool(editor.edit, req, image, edits)
+        result = await run_in_threadpool(editor.edit, req, image, edits)
     except ProviderError as exc:
         logger.error("Design provider error (%s): %s", exc.reason, exc)
         return provider_failure(exc, "edit_failed", "The image editor did not return an edited photo.", UNCHANGED)
+    if result.image_url:
+        result.preservation = await run_in_threadpool(vision.compare_structure, image, result.image_url)
+    return result
 
 
 @app.post("/recommend-products", response_model=ProductRecommendations)

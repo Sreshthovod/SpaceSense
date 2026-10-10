@@ -15,6 +15,8 @@ export function toRoomPayload(form) {
     style: form.style,
     budget_inr: Number(form.budget),
     vastu: Boolean(form.vastu),
+    // Only meaningful with Vastu on; omitted otherwise.
+    ...(form.vastu && form.entryDirection ? { entry_direction: form.entryDirection } : {}),
   }
 }
 
