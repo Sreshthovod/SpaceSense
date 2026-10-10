@@ -12,7 +12,7 @@ import { fetchRoomPlan } from './services/api'
 import RoomForm from './components/form/RoomForm'
 import ResultsSection from './components/results/ResultsSection'
 
-const EMPTY_FORM = { roomType: '', length: '', width: '', height: '', style: '', budget: '', vastu: false }
+const EMPTY_FORM = { roomType: '', length: '', width: '', height: '', style: '', budget: '', vastu: false, entryDirection: '' }
 
 export default function App() {
   const [form, setForm] = useState(EMPTY_FORM)

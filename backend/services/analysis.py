@@ -1,4 +1,5 @@
 from schemas import DesignRecommendations, RoomAnalysis, RoomRequest
+from services.vastu import vastu_notes
 
 STYLE_NOTES = {
     "modern-indian": ["Warm timber, earthy tones and brass accents suit this style."],
@@ -8,12 +9,6 @@ STYLE_NOTES = {
     "boho": ["Layer rugs, plants and textiles; mix natural materials."],
     "industrial": ["Pair dark metal and raw wood with warm lighting to soften the look."],
 }
-
-VASTU_NOTES = [
-    "Place heavy furniture along the south or west walls.",
-    "Keep the north-east corner light and uncluttered.",
-    "Avoid mirrors that face the main entrance.",
-]
 
 CATEGORIES_BY_ROOM = {
     "living room": ["seating", "tables", "storage", "lighting", "decor"],
@@ -64,7 +59,7 @@ def room_metrics(req: RoomRequest) -> dict:
         "size_category": size,
         "budget_tier": _budget_tier(req.budget_inr),
         "style_notes": notes,
-        "vastu_notes": VASTU_NOTES if req.vastu else [],
+        "vastu_notes": vastu_notes(req),
         "suggested_categories": CATEGORIES_BY_ROOM[req.room_type],
     }
 

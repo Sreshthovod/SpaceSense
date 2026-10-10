@@ -17,7 +17,8 @@ def test_health(client):
     r = client.get("/health")
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
-    assert r.json()["providers"] == {"analysis": "rule_based", "chat": "offline", "design": "mock"}
+    assert r.json()["providers"] == {"analysis": "rule_based", "chat": "offline", "design": "mock",
+                                     "products": ["local_catalog"]}
 
 
 # --- analyze-room input validation ---
@@ -28,7 +29,7 @@ def test_analyze_valid_rule_based(client):
     assert data["method"] == "rule_based" and data["photo_analyzed"] is False
     assert data["area_sqft"] == 168.0 and data["volume_cuft"] == 1512.0
     assert data["size_category"] == "medium" and data["budget_tier"] == "mid-range"
-    assert len(data["vastu_notes"]) == 3
+    assert len(data["vastu_notes"]) > 3 and any("living room" not in n for n in data["vastu_notes"])
     recs = data["recommendations"]
     assert recs["summary"] and recs["colors"] and recs["lighting"] and recs["budget_tips"]
     assert "not analysed" in data["disclaimer"]
@@ -98,28 +99,31 @@ def test_recommend_malformed_json(client):
 
 def test_recommendations_valid_and_total_correct(client):
     data = client.post("/recommend-products", json=VALID).json()
-    assert data["source"] == "sample_catalog"
-    assert {i["id"] for i in data["items"]} == {"sofa", "table", "lamp"}  # desk is another room/style
-    assert data["total_inr"] == sum(i["price_inr"] for i in data["items"]) == 46000
+    assert data["sources"] == ["local_catalog"]
+    chosen = [i for i in data["items"] if i["selected"]]
+    assert {i["id"] for i in chosen} == {"sofa", "table", "lamp"}  # desk is another room/style
+    assert data["total_inr"] == sum(i["line_total_inr"] for i in chosen) == 46000
     assert data["remaining_inr"] == 14000
 
 
 @pytest.mark.parametrize("budget", [0, 1, 3999, 4000, 15999, 16000, 33999, 46000, 1_000_000])
 def test_total_never_exceeds_budget(client, budget):
     data = client.post("/recommend-products", json=body(budget_inr=budget)).json()
+    chosen = [i for i in data["items"] if i["selected"]]
     assert data["total_inr"] <= budget
-    assert data["total_inr"] == sum(i["price_inr"] for i in data["items"])
+    assert data["total_inr"] == sum(i["line_total_inr"] for i in chosen)
     assert data["remaining_inr"] == budget - data["total_inr"]
 
 
 def test_budget_too_small_for_everything(client):
     data = client.post("/recommend-products", json=body(budget_inr=100)).json()
-    assert data["items"] == [] and data["total_inr"] == 0 and "below the cheapest" in data["note"]
+    assert not any(i["selected"] for i in data["items"]) and data["total_inr"] == 0
+    assert "below the cheapest" in data["note"] and data["shortfall_inr"] == 4000 - 100
 
 
 def test_no_matching_products(client):
     data = client.post("/recommend-products", json=body(room_type="kitchen")).json()
-    assert data["items"] == [] and "No sample products" in data["note"]
+    assert data["items"] == [] and "No products" in data["note"]
 
 
 def test_negative_budget_rejected_for_products(client):
@@ -128,8 +132,8 @@ def test_negative_budget_rejected_for_products(client):
 
 # --- catalog / internal errors ---
 def _item(**kw):
-    return {"id": "x", "name": "A", "category": "c", "price_inr": 10, "dimensions": "",
-            "styles": ["boho"], "room_types": ["bedroom"], **kw}
+    return {"id": "x", "name": "A", "category": "rugs", "styles": ["boho"], "room_types": ["bedroom"],
+            "why": "w", "search_query": "rug", **kw}
 
 
 def test_malformed_catalog_returns_safe_503(client, catalog_file):
@@ -166,7 +170,7 @@ def test_unexpected_error_is_hidden(client, monkeypatch):
 def test_real_catalog_is_valid():
     products.load_catalog.cache_clear()
     items = products.load_catalog(products.CATALOG_PATH.parent / "products.json")
-    assert items and all(p.price_inr > 0 for p in items)
+    assert items and all(p.price_inr > 0 for p in items if p.price_status == "verified")
     products.load_catalog.cache_clear()
 
 

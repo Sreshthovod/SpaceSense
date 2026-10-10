@@ -15,6 +15,8 @@ export function toRoomPayload(form) {
     style: form.style,
     budget_inr: Number(form.budget),
     vastu: Boolean(form.vastu),
+    // Only meaningful with Vastu on; omitted otherwise.
+    ...(form.vastu && form.entryDirection ? { entry_direction: form.entryDirection } : {}),
   }
 }
 
@@ -71,8 +73,12 @@ function roomForm(form, photo) {
 export const analyzeRoom = (form, photo, signal) =>
   post('/analyze-room', roomForm(form, photo), { signal, timeout: TIMEOUTS.analyze })
 
-export const recommendProducts = (form, signal) =>
-  post('/recommend-products', toRoomPayload(form), { signal, timeout: TIMEOUTS.products })
+/** Product picks for the room. Passing the design advice lets the backend focus on what should change. */
+export const recommendProducts = (form, { recommendations } = {}, signal) =>
+  post('/recommend-products', recommendations ? { ...toRoomPayload(form), recommendations } : toRoomPayload(form), {
+    signal,
+    timeout: TIMEOUTS.products,
+  })
 
 /** Sends the conversation (the server keeps no state) and returns the consultant's reply. Text only. */
 export function sendChat({ form, photo, messages, recommendations }, signal) {
@@ -92,8 +98,17 @@ export function editRoomPhoto({ form, photo, items, notes = '' }, signal) {
   return post('/generate-design', fd, { signal, timeout: TIMEOUTS.edit })
 }
 
-/** Consultation step: analysis and product picks. No image editing happens here. */
+/**
+ * Consultation step: analysis, then product picks based on that advice. No image editing happens here.
+ * A failed product lookup doesn't throw away the analysis: it comes back as `productsError`.
+ */
 export async function fetchRoomPlan(form, photo, signal) {
-  const [analysis, products] = await Promise.all([analyzeRoom(form, photo, signal), recommendProducts(form, signal)])
-  return { analysis, products }
+  const analysis = await analyzeRoom(form, photo, signal)
+  try {
+    const products = await recommendProducts(form, { recommendations: analysis.recommendations }, signal)
+    return { analysis, products, productsError: null }
+  } catch (err) {
+    if (!(err instanceof ApiError)) throw err // aborted by the user
+    return { analysis, products: null, productsError: err.message }
+  }
 }

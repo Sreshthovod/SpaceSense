@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Info } from 'lucide-react'
+import { recommendProducts } from '../../services/api'
 import Button from '../ui/Button'
 import ChatPanel from './ChatPanel'
 import DesignStudio from './DesignStudio'
@@ -10,7 +11,23 @@ import RoomAnalysisPanel from './RoomAnalysisPanel'
 export default function ResultsSection({ form, photo, imageUrl, result, onReset }) {
   const headingRef = useRef(null)
   useEffect(() => { headingRef.current?.focus() }, [])
-  const { analysis, products } = result
+  const { analysis } = result
+  const [products, setProducts] = useState(result.products)
+  const [productsError, setProductsError] = useState(result.productsError || '')
+  const [retrying, setRetrying] = useState(false)
+
+  const retryProducts = async () => {
+    if (retrying) return
+    setRetrying(true)
+    try {
+      setProducts(await recommendProducts(form, { recommendations: analysis.recommendations }))
+      setProductsError('')
+    } catch (err) {
+      setProductsError(err.message || 'Product recommendations are unavailable right now.')
+    } finally {
+      setRetrying(false)
+    }
+  }
   const roomTypeName = form.roomType ? form.roomType.toLowerCase() : 'room'
 
   return (
@@ -24,17 +41,17 @@ export default function ResultsSection({ form, photo, imageUrl, result, onReset 
       <p className="mt-2 text-sm text-muted sm:text-base">{form.length} × {form.width} × {form.height} ft{form.vastu ? ' · Vastu on' : ''}</p>
       <div className="mt-4 flex items-start gap-2 rounded-xl border border-line bg-sand/60 p-3 text-sm">
         <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-sage-dark" />
-        Review the recommendations first. Your photo is only edited if you approve, and products come from a small sample catalog.
+        Review the recommendations first. Your photo is only edited if you approve. Product prices are retailer listings checked on the date shown; confirm them before you buy.
       </div>
       <div className="mt-6"><RecommendationsPanel analysis={analysis} /></div>
       <div className="mt-6"><ChatPanel form={form} photo={photo} recommendations={analysis.recommendations} /></div>
       <div className="mt-6">
         <DesignStudio form={form} photo={photo} originalUrl={imageUrl} recommendations={analysis.recommendations} />
       </div>
-      <div className="mt-6 grid gap-6 lg:grid-cols-[3fr_2fr]">
-        <FurniturePanel products={products} />
-        <RoomAnalysisPanel analysis={analysis} />
+      <div className="mt-6">
+        <FurniturePanel products={products} error={productsError} onRetry={retryProducts} retrying={retrying} />
       </div>
+      <div className="mt-6"><RoomAnalysisPanel analysis={analysis} /></div>
     </section>
   )
 }
