@@ -9,9 +9,16 @@ const DRAWER_LINES = { 'tv-unit': 1, 'bedside-table': 2, dresser: 3 }
  * Low-poly furniture built from shared unit shapes. Local space: origin at the centre of the footprint
  * on the floor, y up, front facing +z. Sizes are already scaled.
  */
+// The main finish of each piece's body.
+const FINISH = {
+  sofa: 'fabric', armchair: 'fabric', 'desk-chair': 'fabric', bed: 'fabric', pouf: 'fabric', rug: 'fabric',
+  'tv-unit': 'lacquer', 'bedside-table': 'lacquer', dresser: 'lacquer', 'study-desk': 'lacquer',
+  vase: 'ceramic', 'table-lamp': 'fabric', 'floor-lamp': 'fabric', plant: 'fabric', 'small-plant': 'fabric',
+}
+
 export default function FloorItemShape({ catalogId, w, d, h, color }) {
   const { upright, sphere, cone, material } = useResources()
-  const m = material(color)
+  const m = material(color, FINISH[catalogId] || 'wood')
   switch (catalogId) {
     case 'sofa':
     case 'armchair': {

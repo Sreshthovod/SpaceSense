@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Plane, Vector3 } from 'three'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Matrix4, Plane, Quaternion, Vector3 } from 'three'
 import { floorItemSpec } from '../model/catalog'
 import { isDrag } from '../model/camera'
 import { clampToRoom, footprint, snapFloor, snapRotationStep } from '../model/floorPlacement'
@@ -16,7 +16,42 @@ function Halo({ w, d, warned }) {
   return <Part position={[0, 0.006, 0]} scale={[w + 0.3, 0.01, d + 0.3]} mat={material(warned ? '#c0392b' : '#5b6650', { roughness: 1 })} />
 }
 
-function FloorItem({ item, selected, warned, handlers }) {
+const MAX_SHADOWS = 200
+const UP = new Vector3(0, 1, 0)
+
+/**
+ * Soft shadows on the floor under every piece standing on it, drawn as ONE instanced mesh: the same
+ * blob repeated, so 30 pieces cost one draw call instead of 30.
+ */
+function ContactShadows({ items }) {
+  const { plane, contact } = useResources()
+  const ref = useRef(null)
+  const grounded = items.filter((i) => !i.elevation && floorItemSpec(i.catalogId)?.layer !== 'rug')
+  useLayoutEffect(() => {
+    const mesh = ref.current
+    if (!mesh) return
+    const m = new Matrix4()
+    const q = new Quaternion()
+    grounded.slice(0, MAX_SHADOWS).forEach((item, i) => {
+      const { w, d } = footprint(item)
+      q.setFromAxisAngle(UP, (item.rotation * Math.PI) / 180)
+      m.compose(new Vector3(item.x, 0.005, item.z), q, new Vector3(w * 1.25, 1, d * 1.25))
+      mesh.setMatrixAt(i, m)
+    })
+    mesh.count = Math.min(grounded.length, MAX_SHADOWS)
+    mesh.instanceMatrix.needsUpdate = true
+    mesh.computeBoundingSphere()
+  })
+  return <instancedMesh ref={ref} args={[plane, contact, MAX_SHADOWS]} renderOrder={1} raycast={() => null} dispose={null} frustumCulled={false} />
+}
+
+/** A thin box outline around a piece: solid when selected, faint on hover. */
+function Outline({ w, d, h, hover }) {
+  const { edges, outline, hoverOutline } = useResources()
+  return <lineSegments geometry={edges} material={hover ? hoverOutline : outline} position={[0, h / 2, 0]} scale={[w + 0.12, h + 0.12, d + 0.12]} raycast={() => null} dispose={null} />
+}
+
+function FloorItem({ item, selected, hovered, warned, handlers }) {
   const spec = floorItemSpec(item.catalogId)
   if (!spec) return null
   const { w, d, h } = footprint(item)
@@ -29,7 +64,8 @@ function FloorItem({ item, selected, warned, handlers }) {
       {...handlers(item)}
     >
       <FloorItemShape catalogId={item.catalogId} w={w} d={d} h={h} color={item.color || spec.color} />
-      {(selected || warned) && <Halo w={w} d={d} warned={warned} />}
+      {warned && <Halo w={w} d={d} warned />}
+      {(selected || hovered) && <Outline w={w} d={d} h={Math.max(h, 0.05)} hover={!selected} />}
     </group>
   )
 }
@@ -43,8 +79,9 @@ function FloorItem({ item, selected, warned, handlers }) {
  * In move and rotate the camera is switched off on press, so a drag never moves both. Esc cancels a
  * drag in progress. Locked items can be selected but not moved. One drag is one undo step.
  */
-export default function FloorItems({ design, size, mode, snap, selected, warned, setOrbitEnabled, onSelect, onFocus, dispatch }) {
+export default function FloorItems({ design, size, mode, snap, selected, warned, setOrbitEnabled, onSelect, onFocus, dispatch, onDragFrame }) {
   const [drag, setDrag] = useState(null) // { uid, kind, startX, startY, dx, dz, origin, draft, active }
+  const [hovered, setHovered] = useState(null)
   const dragRef = useRef(null)
   useEffect(() => { dragRef.current = drag }, [drag])
   const items = design.items.filter((i) => !i.wall && !i.hidden)
@@ -107,6 +144,7 @@ export default function FloorItems({ design, size, mode, snap, selected, warned,
       const next = { ...current, active: true, draft, guides }
       dragRef.current = next
       setDrag(next)
+      onDragFrame?.()
     },
     onPointerUp: (e) => {
       const current = dragRef.current
@@ -140,16 +178,21 @@ export default function FloorItems({ design, size, mode, snap, selected, warned,
     onPointerOver: (e) => {
       if (mode === 'navigate') return
       e.stopPropagation()
+      setHovered(item.uid)
       document.body.style.cursor = editable ? (item.locked ? 'not-allowed' : mode === 'rotate' ? 'ew-resize' : 'grab') : 'pointer'
     },
-    onPointerOut: () => { document.body.style.cursor = '' },
+    onPointerOut: () => {
+      setHovered((h) => (h === item.uid ? null : h))
+      document.body.style.cursor = ''
+    },
   })
 
   return (
     <>
+      <ContactShadows items={items.map((stored) => (drag?.uid === stored.uid ? drag.draft : stored))} />
       {items.map((stored) => {
         const item = drag?.uid === stored.uid ? drag.draft : stored
-        return <FloorItem key={item.uid} item={item} selected={item.uid === selected} warned={warned.has(item.uid)} handlers={handlers} />
+        return <FloorItem key={item.uid} item={item} selected={item.uid === selected} hovered={item.uid === hovered && mode !== 'navigate'} warned={warned.has(item.uid)} handlers={handlers} />
       })}
       {drag?.active && drag.guides?.map((g) => <Guide key={`${g.axis}${g.at}`} guide={g} size={size} />)}
     </>

@@ -21,6 +21,7 @@ const { default: RoomDesigner } = await import('./RoomDesigner')
 const form = { roomType: 'Bedroom', length: '14', width: '12', height: '9', style: 'scandinavian', budget: '40000' }
 const scene = () => screen.getByTestId('scene').dataset
 const add = (name) => fireEvent.click(screen.getByRole('button', { name: `Add ${name}` })) // detail 0: like the keyboard
+const openTab = (name) => fireEvent.click(screen.getByRole('tab', { name }))
 
 beforeEach(() => {
   document.body.innerHTML = '<div id="root"></div>'
@@ -125,6 +126,7 @@ describe('object list', () => {
     render(<RoomDesigner form={form} onClose={() => {}} />)
     add('three-seater sofa')
     add('floor plant')
+    openTab('Room')
     fireEvent.click(screen.getByRole('button', { name: /In this room \(2\)/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Hide Floor plant' }))
     expect(scene().items).toBe('sofa,plant(hidden)')
@@ -146,20 +148,23 @@ describe('finishes', () => {
     render(<RoomDesigner form={form} onClose={() => {}} />)
     const walls = () => JSON.parse(scene().walls)
     const floor = () => JSON.parse(scene().floor)
+    openTab('Walls')
     fireEvent.click(screen.getByRole('button', { name: 'Cool' }))
     fireEvent.click(screen.getByRole('radio', { name: '#9fb3bf' }))
     expect(Object.values(walls()).every((w) => w.color === '#9fb3bf')).toBe(true)
-    const wallSection = screen.getByRole('heading', { name: 'Walls' }).parentElement
+    const wallSection = screen.getByRole('heading', { name: 'All walls' }).parentElement
     fireEvent.click(within(wallSection).getByRole('radio', { name: 'Satin' }))
     expect(walls().left.sheen).toBe('satin')
 
     fireEvent.click(screen.getByRole('button', { name: /^left wall/i }))
-    fireEvent.click(screen.getByRole('radio', { name: 'Wallpaper' }))
-    fireEvent.click(screen.getByRole('radio', { name: 'Geometric' }))
+    const wallTools = screen.getByRole('complementary', { name: 'Wall tools' })
+    fireEvent.click(within(wallTools).getByRole('radio', { name: 'Wallpaper' }))
+    fireEvent.click(within(wallTools).getByRole('radio', { name: 'Geometric' }))
     expect(walls().left).toMatchObject({ kind: 'wallpaper', pattern: 'geometric' })
     expect(walls().back.kind).toBe('paint')
     fireEvent.keyDown(window, { key: 'Escape' })
 
+    openTab('Floor')
     fireEvent.click(screen.getByRole('radio', { name: 'Dark wood' }))
     fireEvent.click(screen.getByRole('radio', { name: '45°' }))
     fireEvent.change(screen.getByRole('slider', { name: /Pattern size/ }), { target: { value: '150' } })

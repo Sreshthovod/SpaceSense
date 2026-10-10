@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowLeft, Box, History, PaintRoller, Redo2, TriangleAlert, Undo2 } from 'lucide-react'
+import {
+  ArrowLeft, Box, ChevronLeft, ChevronRight, History, Home, LibraryBig, MousePointerClick, PaintRoller, Redo2, Sofa, SquareDashed,
+  TriangleAlert, Undo2, X,
+} from 'lucide-react'
 import { STYLES } from '../data/sampleData'
 import { formatINR } from '../utils/format'
 import usePrefersReducedMotion from '../hooks/usePrefersReducedMotion'
-import Button from '../components/ui/Button'
 import { WALLS, WALL_LABELS, createDesign, findPlaced, onWall, roomSize, styleLabel } from './model/design'
 import { newUid } from './model/ids'
 import { floorWarnings, itemWorldCenter } from './model/floorPlacement'
@@ -21,6 +23,11 @@ import useDesignStore from './hooks/useDesignStore'
 import useDesignerKeys from './hooks/useDesignerKeys'
 import DesignsMenu from './layout/DesignsMenu'
 import ViewportToolbar from './layout/ViewportToolbar'
+import Sidebar from './layout/Sidebar'
+import OnboardingHint from './layout/OnboardingHint'
+import SceneBoundary from './scene/SceneBoundary'
+import useTips from './hooks/useTips'
+import { FloorFinishPanel, WallFinishPanel } from './panels/FinishPanels'
 import useGestureSetting from './hooks/useGestureSetting'
 import RoomSettings from './panels/RoomSettings'
 import WallPanel from './panels/WallPanel'
@@ -85,6 +92,9 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
   const [snap, setSnap] = useState(true)
   const [gesture, setGesture] = useGestureSetting()
   const [command, setCommand] = useState(null) // a camera request: { kind, ..., key }
+  // ?perf shows live performance numbers over the view.
+  const [perfOn] = useState(() => new URLSearchParams(window.location.search).has('perf'))
+  const [perf, setPerf] = useState(null)
   const [activeWall, setActiveWall] = useState(null)
   const [selected, setSelected] = useState(null)
   const { catalog, error: catalogError } = useStudioCatalog()
@@ -121,6 +131,13 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
     setSelected(item.uid)
   }
   const [placing, setPlacing] = useState(null) // { catalogId } while a placement preview follows the pointer
+  const [tab, setTab] = useState('furniture') // the library sidebar's tab
+  const [leftOpen, setLeftOpen] = useState(true) // desktop: sidebar expanded or collapsed to a rail
+  const [drawerOpen, setDrawerOpen] = useState(false) // tablet/phone: the sidebar as a slide-over drawer
+  const [budgetOpen, setBudgetOpen] = useState(false)
+  const tips = useTips()
+  const [sceneKey, setSceneKey] = useState(0) // bumped to rebuild the 3D view after a failure
+  const [contextLost, setContextLost] = useState(false)
   const [recent, rememberRecent] = useRecent()
   const addFloorItem = (catalogId, at) => {
     const uid = newUid()
@@ -222,18 +239,103 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
     onFocus: () => (selected ? focusItem(selected) : camera({ kind: 'fit' })),
   })
 
+  const hiddenUids = new Set(design.items.filter((i) => i.hidden).map((i) => i.uid))
+  const rightPanel = budgetOpen || activeWall || (selectedItem && !selectedItem.wall)
+  const closeDrawerOnPick = (fn) => (...args) => {
+    setDrawerOpen(false)
+    fn(...args)
+  }
+
+  const libraryTabs = [
+    {
+      id: 'furniture',
+      label: 'Furniture',
+      icon: Sofa,
+      content: (
+        <CatalogPanel
+          catalog={catalog}
+          recent={recent}
+          onPick={closeDrawerOnPick(pickFromCatalog)}
+          placingName={placing ? floorItemSpec(placing.catalogId)?.name.toLowerCase() : null}
+          onCancelPlacing={cancelPlacing}
+        />
+      ),
+    },
+    {
+      id: 'walls',
+      label: 'Walls',
+      icon: PaintRoller,
+      content: (
+        <div className="space-y-5">
+          <section aria-labelledby="walls-heading">
+            <h3 id="walls-heading" className="font-display text-xl font-semibold">Decorate a wall</h3>
+            <p className="mt-1 text-xs text-muted">Open a wall to add art, mirrors, shelves, doors and windows, or to give it its own finish.</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {WALLS.map((w) => {
+                const count = onWall(design, w).length
+                return (
+                  <button key={w} type="button" onClick={closeDrawerOnPick(() => openWall(w))} className="rounded-xl border border-line bg-white px-3 py-2 text-left text-sm font-medium hover:border-sage hover:bg-sand/50">
+                    {WALL_LABELS[w]}
+                    <span className="block text-[11px] font-normal text-muted">{count ? `${count} item${count > 1 ? 's' : ''}` : 'Empty'}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+          <section aria-labelledby="walls-finish-heading" className="space-y-3 border-t border-line pt-4">
+            <h3 id="walls-finish-heading" className="font-display text-xl font-semibold">All walls</h3>
+            <WallFinishPanel walls={design.walls} wall="all" dispatch={dispatch} />
+          </section>
+        </div>
+      ),
+    },
+    {
+      id: 'floor',
+      label: 'Floor',
+      icon: SquareDashed,
+      content: (
+        <section aria-labelledby="floor-finish-heading" className="space-y-3">
+          <h3 id="floor-finish-heading" className="font-display text-xl font-semibold">Floor</h3>
+          <FloorFinishPanel floor={design.floor} dispatch={dispatch} />
+        </section>
+      ),
+    },
+    {
+      id: 'room',
+      label: 'Room',
+      icon: Home,
+      content: (
+        <div className="space-y-5">
+          <ObjectList design={design} selected={selected} onSelect={closeDrawerOnPick((item) => (item.wall ? selectItem(item) : focusItem(item.uid)))} dispatch={dispatch} />
+          <RoomSettings design={design} dispatch={dispatch} photoUrl={photo && design.photo?.name === photo.name ? photoUrl : null} />
+        </div>
+      ),
+    },
+  ]
+
   return createPortal(
     <div role="dialog" aria-modal="true" aria-labelledby="designer-heading" className="fixed inset-0 z-[60] flex flex-col bg-cream text-ink">
-      <header className="relative flex flex-wrap items-center justify-between gap-3 border-b border-line bg-cream px-4 py-3 sm:px-6">
-        <div className="min-w-0">
-          <h2 id="designer-heading" ref={headingRef} tabIndex={-1} className="font-display text-2xl font-semibold leading-tight focus:outline-none focus-visible:outline-none">
-            3D Room Designer
-          </h2>
-          <p className="truncate text-xs text-muted">
-            {styleName} · Budget {formatINR(design.budget)} · Build your dream room. Place every item yourself.
-          </p>
+      <header className="relative flex items-center justify-between gap-1.5 border-b border-line bg-cream px-2 py-1.5 sm:flex-wrap sm:gap-2 sm:px-4 sm:py-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Open the design library"
+            aria-expanded={drawerOpen}
+            className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-semibold hover:bg-sand lg:hidden"
+          >
+            <LibraryBig aria-hidden="true" className="h-4 w-4" /> <span className="hidden sm:inline">Library</span>
+          </button>
+          <div className="min-w-0">
+            <h2 id="designer-heading" ref={headingRef} tabIndex={-1} className="sr-only font-display text-xl font-semibold leading-tight focus:outline-none focus-visible:outline-none sm:not-sr-only sm:text-2xl">
+              3D Room Designer
+            </h2>
+            <p className="hidden truncate text-xs text-muted md:block">
+              {styleName} · Build your dream room. Place every item yourself.
+            </p>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:flex-wrap sm:gap-2">
           <div className="flex items-center rounded-full border border-line bg-white">
             <button type="button" onClick={undo} disabled={!canUndo} aria-label="Undo" title="Undo (Ctrl/Cmd+Z)" aria-keyshortcuts="Control+Z Meta+Z" className="rounded-l-full px-2.5 py-1.5 hover:bg-sand disabled:opacity-35">
               <Undo2 aria-hidden="true" className="h-4 w-4" />
@@ -252,18 +354,52 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
             onReset={resetDesign}
             onDialog={onDialog}
           />
-          <div className="hidden md:block" aria-hidden={!budget.data}>
-            <BudgetMeter data={budget.data} compact />
-          </div>
-          <Button variant="secondary" onClick={onClose}>
-            <ArrowLeft aria-hidden="true" className="h-4 w-4" /> {closeLabel}
-          </Button>
+          <button
+            type="button"
+            onClick={() => setBudgetOpen((o) => !o)}
+            aria-expanded={budgetOpen}
+            aria-label={`Budget: ${budget.data ? `${formatINR(budget.data.total_inr)} of ${formatINR(budget.data.budget_inr)}` : formatINR(design.budget)}`}
+            className={`max-w-[6.5rem] rounded-full border px-2.5 py-1.5 text-left hover:bg-sand sm:max-w-none sm:px-3 ${budgetOpen ? 'border-ink bg-white' : 'border-line bg-white'}`}
+          >
+            {budget.data ? <BudgetMeter data={budget.data} compact /> : <span className="whitespace-nowrap text-[11px] font-semibold sm:text-xs">{formatINR(design.budget)}</span>}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={closeLabel}
+            className="inline-flex shrink-0 items-center gap-2 rounded-full border border-line bg-white p-2 text-sm font-semibold hover:bg-sand sm:px-4 sm:py-2.5"
+          >
+            <ArrowLeft aria-hidden="true" className="h-4 w-4" /> <span className="hidden sm:inline">{closeLabel}</span>
+          </button>
         </div>
       </header>
       {draft && <RecoveryBanner draft={draft} onRecover={recover} onFresh={startFresh} onDismiss={() => setDraft(null)} />}
 
-      <div className="grid min-h-0 flex-1 grid-rows-[minmax(16rem,55vh)_1fr] lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-1">
-        <div className="flex min-h-0 flex-col border-b border-line lg:border-b-0 lg:border-r">
+      <div className="relative flex min-h-0 flex-1">
+        {/* Library: a collapsible column on desktop, a slide-over drawer on smaller screens. */}
+        {drawerOpen && <div aria-hidden="true" className="fixed inset-0 z-30 bg-ink/30 lg:hidden" onClick={() => setDrawerOpen(false)} />}
+        <aside
+          aria-label="Design library"
+          className={`${drawerOpen ? 'fixed inset-y-0 left-0 z-40 flex w-[min(22rem,88vw)] shadow-xl' : 'hidden'} flex-col border-r border-line bg-cream lg:static lg:z-auto lg:flex lg:shadow-none ${leftOpen ? 'lg:w-80' : 'lg:w-0 lg:overflow-hidden lg:border-r-0'}`}
+        >
+          <div className="flex items-center justify-end px-2 pt-2 lg:hidden">
+            <button type="button" onClick={() => setDrawerOpen(false)} aria-label="Close the design library" className="rounded-full p-1.5 hover:bg-sand">
+              <X aria-hidden="true" className="h-4 w-4" />
+            </button>
+          </div>
+          <Sidebar tabs={libraryTabs} tab={tab} setTab={setTab} />
+        </aside>
+
+        <section aria-label="Room view" className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+          <button
+            type="button"
+            onClick={() => setLeftOpen((o) => !o)}
+            aria-label={leftOpen ? 'Collapse the design library' : 'Expand the design library'}
+            aria-expanded={leftOpen}
+            className="absolute left-0 top-1/2 z-20 hidden -translate-y-1/2 rounded-r-lg border border-l-0 border-line bg-white py-3 pl-0.5 pr-1 shadow-sm hover:bg-sand lg:block"
+          >
+            {leftOpen ? <ChevronLeft aria-hidden="true" className="h-4 w-4" /> : <ChevronRight aria-hidden="true" className="h-4 w-4" />}
+          </button>
           {activeWall && (
             <div className="min-h-0 flex-[3]">
               <WallEditor
@@ -282,7 +418,10 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
           <div className={`relative min-h-0 ${activeWall ? 'hidden flex-[2] border-t border-line lg:block' : 'flex-1'}`}>
           {webgl ? (
             <>
+              <SceneBoundary lost={contextLost} onReload={() => { setContextLost(false); setSceneKey((k) => k + 1) }}>
               <DesignerScene
+                key={sceneKey}
+                onContextLost={() => setContextLost(true)}
                 design={design}
                 size={size}
                 view={view}
@@ -302,8 +441,11 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
                 placing={placing}
                 onPlace={placeAt}
                 onCancelPlacing={cancelPlacing}
+                onPerf={perfOn ? setPerf : undefined}
                 label={`3D view of a ${size.width} by ${size.length} foot room, ${size.height} feet high`}
               />
+              </SceneBoundary>
+              {tips.show && !contextLost && <OnboardingHint onClose={tips.dismiss} />}
               <ViewportToolbar
                 mode={mode}
                 setMode={setMode}
@@ -315,7 +457,13 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
                 canFocus={Boolean(selected)}
                 gesture={gesture}
                 setGesture={setGesture}
+                onShowTips={tips.reopen}
               />
+              {perfOn && perf && (
+                <p className="pointer-events-none absolute bottom-3 right-3 rounded-lg bg-ink/80 px-2 py-1 font-mono text-[10px] text-cream" data-testid="perf">
+                  {perf.fps} fps · {perf.calls} draws · {(perf.triangles / 1000).toFixed(1)}k tris · {perf.geometries} geo · {perf.textures} tex
+                </p>
+              )}
               {warnings.length > 0 && (
                 <ul aria-live="polite" className="absolute bottom-3 left-3 right-3 max-h-28 space-y-0.5 overflow-y-auto rounded-xl bg-white/95 px-3 py-2 text-xs shadow-sm sm:right-auto sm:max-w-md">
                   {warnings.map((w) => (
@@ -330,61 +478,38 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
             <NoWebGL />
           )}
           </div>
-        </div>
-        <aside aria-label={activeWall ? 'Wall tools' : 'Room settings'} className="min-h-0 overflow-y-auto p-5">
-          <div className="mb-6">
-            <BudgetPanel
-              design={design}
-              dispatch={dispatch}
-              budget={budget}
-              selected={selected}
-              onSelectLine={focusItem}
-              onAddSuggestion={addSuggestion}
-              defaultOpen={false}
-              hidden={new Set([...design.items].filter((i) => i.hidden).map((i) => i.uid))}
-            />
-          </div>
-          <div className="mb-6">
-            <ObjectList design={design} selected={selected} onSelect={(item) => (item.wall ? selectItem(item) : focusItem(item.uid))} dispatch={dispatch} />
-          </div>
-          {activeWall ? (
-            <WallPanel design={design} wallId={activeWall} selected={selected} dispatch={dispatch} onAdd={addWallItem} catalog={catalog} catalogError={catalogError} />
-          ) : (
-            <>
-              {selectedItem && !selectedItem.wall && (
-                <div className="mb-6">
-                  <Inspector item={selectedItem} design={design} mode={mode} dispatch={dispatch} onDuplicate={duplicateSelected} onDelete={deleteSelected} onDeselect={() => setSelected(null)} catalog={catalog} catalogError={catalogError} />
-                </div>
-              )}
-              <section aria-labelledby="walls-heading" className="mb-6">
-                <div className="flex items-center gap-2">
-                  <PaintRoller aria-hidden="true" className="h-4 w-4 text-sage-dark" />
-                  <h3 id="walls-heading" className="font-display text-xl font-semibold">Decorate a wall</h3>
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  {WALLS.map((w) => {
-                    const count = onWall(design, w).length
-                    return (
-                      <button key={w} type="button" onClick={() => openWall(w)} className="rounded-xl border border-line bg-white px-3 py-2 text-left text-sm font-medium hover:border-sage hover:bg-sand/50">
-                        {WALL_LABELS[w]}
-                        <span className="block text-[11px] font-normal text-muted">{count ? `${count} item${count > 1 ? 's' : ''}` : 'Empty'}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </section>
-              <div className="mb-6 border-b border-line pb-6">
-                <CatalogPanel
-                  catalog={catalog}
-                  recent={recent}
-                  onPick={pickFromCatalog}
-                  placingName={placing ? floorItemSpec(placing.catalogId)?.name.toLowerCase() : null}
-                  onCancelPlacing={cancelPlacing}
+        </section>
+
+        {/* Inspector: an always-present column on desktop (so selecting never resizes the 3D view),
+            a bottom sheet on smaller screens that only appears when there's something to show. */}
+        <aside
+          aria-label={activeWall ? 'Wall tools' : budgetOpen && !selectedItem ? 'Budget' : 'Inspector'}
+          className={`${rightPanel ? 'fixed' : 'hidden'} inset-x-0 bottom-0 z-30 max-h-[55vh] overflow-y-auto rounded-t-2xl border-t border-line bg-cream p-4 shadow-[0_-8px_24px_rgba(36,38,32,0.12)] lg:static lg:z-auto lg:block lg:max-h-none lg:w-80 lg:shrink-0 lg:rounded-none lg:border-l lg:border-t-0 lg:shadow-none`}
+        >
+            {!rightPanel && (
+              <div className="flex h-full flex-col items-center justify-center px-4 text-center text-sm text-muted">
+                <MousePointerClick aria-hidden="true" className="h-6 w-6 text-sage-dark" />
+                <p className="mt-2">Select a piece to edit it, or open a wall from the Walls tab.</p>
+              </div>
+            )}
+            {budgetOpen && (
+              <div className="mb-4">
+                <BudgetPanel
+                  design={design}
+                  dispatch={dispatch}
+                  budget={budget}
+                  selected={selected}
+                  onSelectLine={focusItem}
+                  onAddSuggestion={addSuggestion}
+                  hidden={hiddenUids}
                 />
               </div>
-              <RoomSettings design={design} dispatch={dispatch} photoUrl={photo && design.photo?.name === photo.name ? photoUrl : null} />
-            </>
-          )}
+            )}
+            {activeWall ? (
+              <WallPanel design={design} wallId={activeWall} selected={selected} dispatch={dispatch} onAdd={addWallItem} catalog={catalog} catalogError={catalogError} />
+            ) : selectedItem && !selectedItem.wall ? (
+              <Inspector item={selectedItem} design={design} mode={mode} dispatch={dispatch} onDuplicate={duplicateSelected} onDelete={deleteSelected} onDeselect={() => setSelected(null)} catalog={catalog} catalogError={catalogError} />
+            ) : null}
         </aside>
       </div>
     </div>,

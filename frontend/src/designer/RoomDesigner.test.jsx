@@ -45,6 +45,8 @@ vi.mock('../services/api', () => ({
 
 const { default: RoomDesigner } = await import('./RoomDesigner')
 
+const openTab = (name) => fireEvent.click(screen.getByRole('tab', { name }))
+
 const form = { roomType: 'Bedroom', length: '14', width: '11', height: '9', style: 'modern-indian', budget: '25000' }
 
 beforeEach(() => {
@@ -72,7 +74,8 @@ describe('RoomDesigner', () => {
     const onClose = vi.fn()
     const { unmount } = render(<RoomDesigner form={form} onClose={onClose} />)
     expect(screen.getByRole('dialog', { name: '3D Room Designer' })).toBeTruthy()
-    expect(screen.getByText(/Warm & cozy \(Modern Indian\) · Budget ₹25,000/)).toBeTruthy()
+    expect(screen.getByText(/Warm & cozy \(Modern Indian\) · Build your dream room/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Budget: ₹25,000/ })).toBeTruthy()
     expect(document.getElementById('root').inert).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: /back to results/i }))
     expect(onClose).toHaveBeenCalledOnce()
@@ -83,6 +86,7 @@ describe('RoomDesigner', () => {
   it('updates the scene from the settings panel and badges every dimension', () => {
     webgl.available = true
     render(<RoomDesigner form={{ ...form, height: '' }} onClose={() => {}} />)
+    openTab('Room')
     expect(screen.getAllByText('Measured', { selector: 'span' })).toHaveLength(2)
     expect(screen.getAllByText('Estimated', { selector: 'span' })).toHaveLength(1)
 
@@ -96,6 +100,7 @@ describe('RoomDesigner', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mark ceiling height as measured' }))
     expect(screen.getAllByText('Measured', { selector: 'span' })).toHaveLength(3)
 
+    openTab('Floor')
     fireEvent.click(screen.getByLabelText('Marble'))
     expect(screen.getByTestId('scene').dataset.floor).toBe('marble')
   })
@@ -103,6 +108,7 @@ describe('RoomDesigner', () => {
   it('decorates a wall: add, select, nudge, duplicate, delete, Esc', () => {
     webgl.available = true
     render(<RoomDesigner form={form} onClose={() => {}} />)
+    openTab('Walls')
     fireEvent.click(screen.getByRole('button', { name: /^back wall/i }))
     expect(screen.getByRole('group', { name: /^Back wall, 11′ wide/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /duplicate/i }).disabled).toBe(true)
@@ -134,6 +140,7 @@ describe('RoomDesigner', () => {
 
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByRole('group', { name: /^Back wall/ })).toBeNull()
+    openTab('Walls')
     expect(screen.getByRole('button', { name: /^back wall/i }).textContent).toMatch('Empty')
   })
 
@@ -147,13 +154,13 @@ describe('RoomDesigner', () => {
     expect(screen.getByText(/₹50,990 · verified 10 Oct 2026/)).toBeTruthy()
 
     // The meter shows the server's numbers: over a ₹25,000 budget.
+    fireEvent.click(screen.getByRole('button', { name: /^Budget: / }))
     await vi.waitFor(() => expect(screen.getByTestId('budget-meter').textContent).toBe('₹50,990 · ₹25,990 over budget'), { timeout: 2000 })
     const last = api.payloads.at(-1)
     expect(last.items).toEqual([{ uid: expect.any(String), type: 'sofa', product_id: 'ikea-kivik-sofa' }])
     expect(JSON.stringify(last)).not.toMatch(/price/)
 
     // Clicking the cost row selects the sofa and asks the camera to focus on it.
-    fireEvent.click(screen.getByRole('button', { name: /^Budget/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Deselect' }))
     expect(screen.getByTestId('scene').dataset.selected).toBe('')
     fireEvent.click(screen.getByRole('button', { name: /KIVIK 3-seat sofa/ }))
@@ -166,7 +173,7 @@ describe('RoomDesigner', () => {
     render(<RoomDesigner form={form} onClose={() => {}} />)
     fireEvent.click(screen.getByRole('button', { name: 'Add three-seater sofa' }))
     fireEvent.click(screen.getByRole('button', { name: 'Add floor plant' }))
-    fireEvent.click(screen.getByRole('button', { name: /^Budget/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Budget: / }))
     const budget = screen.getByLabelText('Budget (₹)')
     fireEvent.change(budget, { target: { value: '90000' } })
     fireEvent.blur(budget)
@@ -180,6 +187,7 @@ describe('RoomDesigner', () => {
     webgl.available = true
     api.offline = true
     render(<RoomDesigner form={form} onClose={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: /^Budget: / }))
     expect(await screen.findByText(/Prices unavailable — couldn't reach the server/, {}, { timeout: 2000 })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Add three-seater sofa' }))
     expect(screen.getByText('Product prices are unavailable right now.')).toBeTruthy()

@@ -18,6 +18,7 @@ const { AUTOSAVE_MS } = await import('./hooks/useDesignStore')
 const form = { roomType: 'Living room', length: '16', width: '12', height: '9', style: 'modern-indian', budget: '25000' }
 const items = () => screen.getByTestId('scene').dataset.items
 const add = (name) => fireEvent.click(screen.getByRole('button', { name }))
+const openTab = (name) => fireEvent.click(screen.getByRole('tab', { name }))
 
 beforeEach(() => {
   document.body.innerHTML = '<div id="root"></div>'
@@ -57,6 +58,7 @@ describe('undo and redo', () => {
 
   it('selecting, opening panels and resetting the view create no undo steps', () => {
     render(<RoomDesigner form={form} onClose={() => {}} />)
+    openTab('Walls')
     fireEvent.click(screen.getByRole('button', { name: /^back wall/i }))
     fireEvent.keyDown(window, { key: 'Escape' })
     fireEvent.click(screen.getByRole('button', { name: 'Camera' }))
@@ -73,6 +75,7 @@ describe('autosave and recovery', () => {
     const first = render(<RoomDesigner form={form} onClose={() => {}} />)
     expect(localStorage.getItem(KEYS.draft)).toBeNull() // nothing is written until something changes
     add('Add three-seater sofa')
+    openTab('Floor')
     fireEvent.click(screen.getByRole('radio', { name: 'Marble' }))
     act(() => { vi.advanceTimersByTime(AUTOSAVE_MS + 10) })
     expect(screen.getByTestId('save-status').textContent).toMatch(/^Draft saved/)
@@ -159,6 +162,7 @@ describe('saved designs', () => {
     fireEvent.click(screen.getByRole('button', { name: /Reset design/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Clear room' }))
     expect(items()).toBe('')
+    openTab('Room')
     expect(screen.getByLabelText('Width').value).toBe('12') // the room itself is kept
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
     expect(items()).toBe('sofa')

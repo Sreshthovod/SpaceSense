@@ -32,7 +32,7 @@ function Popover({ label, icon: Icon, children, align = 'right' }) {
  * Viewport controls: interaction mode, snapping, 3D/plan view, camera presets and help.
  * Everything here is UI state: none of it creates undo history.
  */
-export default function ViewportToolbar({ mode, setMode, snap, setSnap, view, setView, onCamera, canFocus, gesture, setGesture }) {
+export default function ViewportToolbar({ mode, setMode, snap, setSnap, view, setView, onCamera, canFocus, gesture, setGesture, onShowTips }) {
   const current = MODES.find((m) => m.id === mode)
   return (
     <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex flex-col gap-2">
@@ -99,8 +99,13 @@ export default function ViewportToolbar({ mode, setMode, snap, setSnap, view, se
             )}
           </Popover>
           <Popover label="Help" icon={CircleHelp}>
-            {() => (
+            {(close) => (
               <div className="space-y-2 p-1">
+                {onShowTips && (
+                  <button type="button" onClick={() => { onShowTips(); close() }} className="w-full rounded-lg bg-sand px-2 py-1.5 text-left font-semibold hover:bg-sand/70">
+                    Show the getting-around tips
+                  </button>
+                )}
                 <fieldset>
                   <legend className="font-semibold">Two-finger scroll / wheel</legend>
                   {[['auto', 'Automatic (trackpad pans, mouse wheel zooms)'], ['zoom', 'Always zoom'], ['pan', 'Always pan']].map(([id, label]) => (
