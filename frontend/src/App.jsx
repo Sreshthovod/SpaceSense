@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import Navbar from './components/layout/Navbar'
 import Footer from './components/layout/Footer'
 import Hero from './components/landing/Hero'
@@ -16,6 +17,13 @@ import RoomForm from './components/form/RoomForm'
 import ResultsSection from './components/results/ResultsSection'
 import StudioCurtain from './components/results/StudioCurtain'
 import { loadLooks, lookFromSearch, lookUrl, saveLook } from './utils/looks'
+import { withViewTransition } from './utils/motion'
+import { useAuth } from './context/auth'
+import { useToast } from './context/toast'
+import useTheme from './hooks/useTheme'
+import useAppCommands from './hooks/useAppCommands'
+import CommandPalette from './components/ui/CommandPalette'
+import ScrollExtras from './components/layout/ScrollExtras'
 
 const RoomDesigner = lazy(() => import('./designer/RoomDesigner'))
 
@@ -107,7 +115,7 @@ export default function App() {
     try {
       setResult(await fetchRoomPlan(form, image.file))
       setStudioKey((k) => k + 1)
-      setPhase('studio')
+      withViewTransition(() => flushSync(() => setPhase('studio')))
       window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' })
     } catch (err) {
       setApiError(err.message || 'Something went wrong. Please try again.')
@@ -120,18 +128,24 @@ export default function App() {
   }
 
   const reset = () => {
-    setPhase('landing')
-    setResult(null)
-    setApiError('')
-    setRestored(null)
-    setForm(EMPTY_FORM)
-    setImage(null)
+    withViewTransition(() => flushSync(() => {
+      setPhase('landing')
+      setResult(null)
+      setApiError('')
+      setRestored(null)
+      setForm(EMPTY_FORM)
+      setImage(null)
+    }))
     window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' })
   }
 
   const snapshot = (extra) => ({ form, ...extra })
 
-  const onSaveLook = (extra) => setLooks(saveLook(snapshot(extra)))
+  const { toast } = useToast()
+  const onSaveLook = (extra) => {
+    setLooks(saveLook(snapshot(extra)))
+    toast('Brief saved in this browser.')
+  }
 
   const onCopyLook = async (extra) => {
     try {
@@ -147,10 +161,28 @@ export default function App() {
     if (found?.form) restoreLook(found)
   }
 
+  // Cmd/Ctrl+K quick actions.
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const { user, logout } = useAuth()
+  const { setTheme } = useTheme()
+  const goSection = useCallback((id) => {
+    if (authRoute) {
+      window.location.hash = `#${id}` // the auth-route effect above scrolls once the landing page is back
+      return
+    }
+    const onLanding = !['advice', 'chat', 'photo', 'shop', 'designer-3d'].includes(id)
+    if (onLanding && phase === 'studio') setPhase('landing')
+    setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' }), 60)
+  }, [authRoute, phase, reduced])
+  const commands = useAppCommands({
+    studio, authRoute, user, logout, openDesigner, reset, goSection, looks, onRestoreLook, setTheme,
+  })
+
   return (
     <div className="flex min-h-screen flex-col">
       <a href="#main-content" className="skip-link">Skip to main content</a>
-      <Navbar onHome={leaveResults} studio={studio && !authRoute} onOpenDesigner={openDesigner} onReset={reset} />
+      {!designerOpen && <ScrollExtras />}
+      <Navbar onHome={leaveResults} studio={studio && !authRoute} onOpenDesigner={openDesigner} onReset={reset} onOpenPalette={() => setPaletteOpen(true)} />
       {phase === 'composing' && <StudioCurtain form={form} imageUrl={image.url} />}
       <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">
         {authRoute ? (
@@ -190,6 +222,7 @@ export default function App() {
         )}
       </main>
       <Footer onHome={leaveResults} />
+      <CommandPalette commands={commands} open={paletteOpen} onOpenChange={setPaletteOpen} enabled={!designerOpen} />
       {designerOpen && (
         <Suspense fallback={<p role="status" className="fixed inset-0 z-[60] flex items-center justify-center bg-cream text-sm text-muted">Loading the 3D designer…</p>}>
           <RoomDesigner form={form} photo={image.file} photoUrl={image.url} onClose={closeDesigner} closeLabel="Close designer" />

@@ -3,6 +3,7 @@ import { BufferGeometry, CanvasTexture, Float32BufferAttribute, LineBasicMateria
 import { WALL_THICKNESS } from '../model/design'
 import { itemCorners } from '../model/floorPlacement'
 import { formatFeet } from '../model/wallPlacement'
+import useTheme from '../../hooks/useTheme'
 
 const TOP = 60 // above any furniture; drawn without depth testing so it's always visible
 
@@ -22,14 +23,14 @@ function gridGeometry(width, length) {
 }
 
 /** A text label drawn into a small texture, laid flat and facing up for the plan camera. */
-function Label({ text, position, rotation = 0 }) {
+function Label({ text, position, rotation = 0, color }) {
   const texture = useMemo(() => {
     const canvas = document.createElement('canvas')
     canvas.width = 256
     canvas.height = 64
     const ctx = canvas.getContext('2d')
     if (ctx) {
-      ctx.fillStyle = '#5c5f55'
+      ctx.fillStyle = color
       ctx.font = '600 36px Inter, system-ui, sans-serif'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
@@ -38,7 +39,7 @@ function Label({ text, position, rotation = 0 }) {
     const t = new CanvasTexture(canvas)
     t.colorSpace = SRGBColorSpace
     return t
-  }, [text])
+  }, [text, color])
   useEffect(() => () => texture.dispose(), [texture])
   return (
     <mesh position={position} rotation={[-Math.PI / 2, 0, rotation]} renderOrder={12}>
@@ -66,7 +67,11 @@ function Outline({ points, color }) {
  * Floor-plan drawing over the top-down view: a 1 ft grid with 5 ft lines, the room outline, the
  * length of each wall, and an outline of every piece of furniture so it's easy to pick.
  */
+// Wall-length labels and the outer wall line sit outside the room, on the page background.
+const EDGE = { light: { label: '#5c5f55', outer: '#5c5f55' }, dark: { label: '#c9c6bb', outer: '#8a8d80' } }
+
 export default function PlanOverlay({ design, size, selected, warned }) {
+  const edge = EDGE[useTheme().theme]
   const grid = useMemo(() => gridGeometry(size.width, size.length), [size.width, size.length])
   const materials = useMemo(() => ({
     minor: new LineBasicMaterial({ color: '#242620', transparent: true, opacity: 0.08, depthTest: false }),
@@ -85,11 +90,11 @@ export default function PlanOverlay({ design, size, selected, warned }) {
       <lineSegments geometry={grid.minor} material={materials.minor} renderOrder={10} />
       <lineSegments geometry={grid.major} material={materials.major} renderOrder={10} />
       <Outline points={room} color="#242620" />
-      <Outline points={outer} color="#5c5f55" />
-      <Label text={formatFeet(size.width)} position={[0, TOP + 1, -hl - t - 0.7]} />
-      <Label text={formatFeet(size.width)} position={[0, TOP + 1, hl + t + 0.7]} />
-      <Label text={formatFeet(size.length)} position={[-hw - t - 0.7, TOP + 1, 0]} rotation={Math.PI / 2} />
-      <Label text={formatFeet(size.length)} position={[hw + t + 0.7, TOP + 1, 0]} rotation={-Math.PI / 2} />
+      <Outline points={outer} color={edge.outer} />
+      <Label text={formatFeet(size.width)} position={[0, TOP + 1, -hl - t - 0.7]} color={edge.label} />
+      <Label text={formatFeet(size.width)} position={[0, TOP + 1, hl + t + 0.7]} color={edge.label} />
+      <Label text={formatFeet(size.length)} position={[-hw - t - 0.7, TOP + 1, 0]} rotation={Math.PI / 2} color={edge.label} />
+      <Label text={formatFeet(size.length)} position={[hw + t + 0.7, TOP + 1, 0]} rotation={-Math.PI / 2} color={edge.label} />
       {design.items.filter((i) => !i.wall && !i.hidden).map((item) => (
         <Outline
           key={item.uid}

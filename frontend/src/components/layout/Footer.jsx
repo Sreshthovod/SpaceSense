@@ -1,4 +1,5 @@
 import { Home } from 'lucide-react'
+import { ThemeChoice } from './ThemeToggle'
 
 const links = [
   { href: '#how-it-works', label: 'How It Works' },
@@ -31,7 +32,10 @@ export default function Footer({ onHome }) {
         </nav>
       </div>
       <div className="border-t border-line">
-        <p className="mx-auto max-w-7xl px-5 py-5 text-xs text-muted sm:px-8">© {YEAR} SpaceSense. Photographs courtesy of Unsplash contributors; shown as examples only.</p>
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-5 sm:px-8">
+          <p className="text-xs text-muted">© {YEAR} SpaceSense. Photographs courtesy of Unsplash contributors; shown as examples only.</p>
+          <ThemeChoice />
+        </div>
       </div>
     </footer>
   )

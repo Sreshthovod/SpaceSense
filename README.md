@@ -105,9 +105,26 @@ pytest
 npm test          # Vitest: API service, approval flow, chat, product panel and budget totals
 npm run lint      # oxlint
 npm run build     # production build
+npm run size      # after a build: fails if a chunk outgrows its gzipped budget
 ```
 
 Tests use temporary data, a fake Gemini client and mocked `fetch`; they need no credentials or internet.
+
+## Motion and theming
+
+- **Light, dark or system theme.** Use the moon/sun button in the navbar, or Light / Dark / System in the footer. The choice is saved in this browser. "System" follows the operating system. Where the browser supports it, the new theme spreads out in a circle from the button.
+- **Quick actions.** Press Cmd+K (Mac) or Ctrl+K (Windows) on any page, or use the search icon in the navbar, to jump to a section, open the 3D designer, change the theme or log in.
+- **Animation rules.**
+  - Timings and shared animations live in `frontend/src/index.css`: `--dur-*` and `--ease-*` for timings, `anim-*` classes for entrances, plus `stagger`, `lift`, `press`, `tilt` and `skeleton`.
+  - Animations only move or fade elements (`transform` and `opacity`). Entrance animations don't hold their end state, so hover effects still work afterwards.
+  - With the system's reduce-motion setting on, everything is instant. That includes the 3D designer's drop-in animation and the pointer effects, which are also off on touch screens.
+  - JavaScript helpers live in `src/utils/motion.js`: `withViewTransition`, `tween` and `prefersReducedMotion`. Pointer effects live in `src/hooks/usePointerEffects.js`.
+- **Pop-up notifications.** Call `useToast().toast('Saved')` in any component inside `ToastProvider`.
+- **Colours.** Use theme colour names, not raw hex values: `bg-cream` for the page, `bg-white` for cards, `text-ink`, `border-line`, `bg-warn-bg` and `bg-accent-bg`. `src/theme.contrast.test.js` checks that text stays readable (at least 4.5:1) in both themes.
+- **Bundle budgets** (gzipped, checked by `npm run size`):
+  - 3D designer: up to 300 KB
+  - main site: up to 130 KB
+  - CSS: up to 25 KB
 
 ## Environment variables
 

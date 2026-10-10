@@ -34,12 +34,12 @@ function ProductImage({ item }) {
       loading="lazy"
       referrerPolicy="no-referrer"
       onError={() => setFailed(true)}
-      className="aspect-[4/3] w-full rounded-xl bg-white object-contain"
+      className="aspect-[4/3] w-full rounded-xl bg-white object-contain transition-transform duration-500 ease-[var(--ease-out)] group-hover/card:scale-[1.04]"
     />
   )
 }
 
-function ProductCard({ item, checked, onToggle }) {
+function ProductCard({ item, index, checked, onToggle }) {
   const priced = isPriced(item)
   const checkedOn = formatChecked(item.last_checked)
   const links = item.links.filter((l) => safeHttpsUrl(l.url))
@@ -47,7 +47,7 @@ function ProductCard({ item, checked, onToggle }) {
   const searchLinks = links.filter((l) => l.kind === 'search')
 
   return (
-    <li className={`flex flex-col rounded-2xl border p-4 transition ${checked ? 'border-sage bg-sage/5' : 'border-line bg-white'}`}>
+    <li className={`lift group/card flex flex-col overflow-hidden rounded-2xl border p-4 transition-colors ${checked ? 'border-sage bg-sage/5' : 'border-line bg-white'}`} style={{ '--i': Math.min(index, 8) }}>
       <ProductImage item={item} />
       <div className="mt-3 flex flex-wrap gap-1.5 text-[11px] font-semibold">
         {priced ? (
@@ -155,11 +155,11 @@ function ProductList({ products }) {
 
       <div
         aria-live="polite"
-        className={`sticky top-20 z-10 mt-4 grid grid-cols-3 gap-2 rounded-xl border p-3 text-sm shadow-sm ${totals.overBudget ? 'border-clay bg-[#fbefe9]' : 'border-line bg-white'}`}
+        className={`sticky top-20 z-10 mt-4 grid grid-cols-3 gap-2 rounded-xl border p-3 text-sm shadow-sm ${totals.overBudget ? 'border-clay bg-warn-bg' : 'border-line bg-white'}`}
       >
         <div>
           <p className="text-xs text-muted">Selected ({totals.count})</p>
-          <p className="font-semibold" data-testid="plan-total">{formatINR(totals.total)}</p>
+          <p key={totals.total} className="anim-up font-semibold tabular-nums" data-testid="plan-total">{formatINR(totals.total)}</p>
         </div>
         <div>
           <p className="text-xs text-muted">Your budget</p>
@@ -167,16 +167,16 @@ function ProductList({ products }) {
         </div>
         <div>
           <p className="text-xs text-muted">{totals.overBudget ? 'Over budget by' : 'Remaining'}</p>
-          <p className={`font-semibold ${totals.overBudget ? 'text-clay' : ''}`} data-testid="plan-remaining">
+          <p key={totals.remaining} className={`anim-up font-semibold tabular-nums ${totals.overBudget ? 'text-clay' : ''}`} data-testid="plan-remaining">
             {formatINR(Math.abs(totals.remaining))}
           </p>
         </div>
       </div>
 
       {items.length > 0 && (
-        <ul className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {items.map((item) => (
-            <ProductCard key={item.id} item={item} checked={selected.has(item.id)} onToggle={toggle} />
+        <ul className="stagger mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {items.map((item, i) => (
+            <ProductCard key={item.id} item={item} index={i} checked={selected.has(item.id)} onToggle={toggle} />
           ))}
         </ul>
       )}

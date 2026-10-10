@@ -5,6 +5,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f7f5f0" />
     <script>
       // Saved choice first, otherwise the system setting. Runs before paint to avoid a flash of the wrong theme.
       (function () {
@@ -14,6 +15,7 @@
           theme = saved === 'light' || saved === 'dark' ? saved : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
         } catch (e) { /* storage blocked: follow the system */ }
         document.documentElement.dataset.theme = theme
+        if (theme === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#161713')
       })()
     </script>
     <title>SpaceSense – Interior redesign</title>

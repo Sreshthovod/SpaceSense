@@ -1,3 +1,25 @@
+import { ROOM_TYPES, STYLES } from '../../data/sampleData'
+import { FLOOR_ITEMS, WALL_ITEMS } from '../../designer/model/catalog'
+import { useCountUp } from '../../hooks/usePointerEffects'
+
+// Real counts from the app's own data, so the figures can't drift from what's actually offered.
+const STATS = [
+  { value: STYLES.length, label: 'Design styles' },
+  { value: ROOM_TYPES.length, label: 'Room types, each with a 3D starter layout' },
+  { value: Object.keys(FLOOR_ITEMS).length + Object.keys(WALL_ITEMS).length, label: 'Furniture and decor pieces in the 3D designer' },
+]
+
+function Stat({ value, label }) {
+  const [ref, shown] = useCountUp(value)
+  return (
+    <div ref={ref} className="border-l border-line pl-5">
+      <p className="font-display text-5xl font-medium tabular-nums text-sage-dark sm:text-6xl" aria-hidden="true">{shown}</p>
+      <p className="sr-only">{value} {label}</p>
+      <p aria-hidden="true" className="mt-1 max-w-[14rem] text-sm text-muted">{label}</p>
+    </div>
+  )
+}
+
 const steps = [
   { n: 1, title: 'Share your space', text: 'Upload a room photo and enter your room dimensions.' },
   { n: 2, title: 'Make it yours', text: 'Choose your style, budget, and optional Vastu preferences.' },
@@ -22,6 +44,9 @@ export default function HowItWorks() {
             </li>
           ))}
         </ol>
+      </div>
+      <div className="reveal mt-20 grid gap-8 sm:grid-cols-3">
+        {STATS.map((s) => <Stat key={s.label} {...s} />)}
       </div>
     </section>
   )

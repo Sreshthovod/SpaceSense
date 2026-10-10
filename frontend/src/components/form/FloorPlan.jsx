@@ -28,19 +28,19 @@ export default function FloorPlan({ length, width, items = [], styleId, compact 
     <figure className={compact ? '' : 'mt-4'}>
       {!compact && <figcaption className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted">Floor plan</figcaption>}
       <svg viewBox={`0 0 ${boxW} ${boxH}`} className="w-full rounded-xl border border-line bg-sand/70" role="img" aria-label={ready ? `Plan of a ${l} by ${w} foot room` : 'Enter dimensions to see a plan'}>
-        <rect x="8" y="8" width={boxW - 16} height={boxH - 16} fill="none" stroke={style?.swatch[2] || '#5b6650'} strokeWidth="2" />
+        <rect x="8" y="8" width={boxW - 16} height={boxH - 16} fill="none" style={{ stroke: style?.swatch[2] || 'var(--color-sage-dark)' }} strokeWidth="2" />
         {ready ? (
           <>
-            <text x={boxW / 2} y={16} textAnchor="middle" fontSize="9" fill="#66695f">{l} ft</text>
-            <text x="12" y={boxH / 2} fontSize="9" fill="#66695f" transform={`rotate(-90 12 ${boxH / 2})`}>{w} ft</text>
+            <text x={boxW / 2} y={16} textAnchor="middle" fontSize="9" className="fill-muted">{l} ft</text>
+            <text x="12" y={boxH / 2} fontSize="9" className="fill-muted" transform={`rotate(-90 12 ${boxH / 2})`}>{w} ft</text>
             {chips.map((chip) => (
               <g key={chip.id}>
-                <rect x={chip.x} y={chip.y} width={chip.w} height={chip.h} rx="2" fill={chip.tone || style?.swatch[0] || '#c9b9a6'} opacity="0.85" />
+                <rect className="anim-fade" x={chip.x} y={chip.y} width={chip.w} height={chip.h} rx="2" fill={chip.tone || style?.swatch[0] || '#c9b9a6'} opacity="0.85" />
               </g>
             ))}
           </>
         ) : (
-          <text x={boxW / 2} y={boxH / 2} textAnchor="middle" fontSize="11" fill="#66695f">Add length and width</text>
+          <text x={boxW / 2} y={boxH / 2} textAnchor="middle" fontSize="11" className="fill-muted">Add length and width</text>
         )}
       </svg>
     </figure>

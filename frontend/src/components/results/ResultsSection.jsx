@@ -17,13 +17,17 @@ import RecommendationsPanel from './RecommendationsPanel'
 import RoomAnalysisPanel from './RoomAnalysisPanel'
 import ShareLooks from './ShareLooks'
 import StyleCompare from './StyleCompare'
+import useActiveSection from '../../hooks/useActiveSection'
 import { STUDIO_LINKS } from './studioLinks'
 
 const RoomDesigner = lazy(() => import('../../designer/RoomDesigner'))
 
+const STUDIO_IDS = STUDIO_LINKS.map((l) => l.id)
+
 export default function ResultsSection({
   form, photo, imageUrl, result, onReset, looks, onSaveLook, onCopyLook, onRestoreLook, restored,
 }) {
+  const activeSection = useActiveSection(STUDIO_IDS)
   const headingRef = useRef(null)
   useEffect(() => { headingRef.current?.focus() }, [])
   const { analysis } = result
@@ -82,7 +86,7 @@ export default function ResultsSection({
       <nav aria-label="Studio sections" className="sticky top-16 z-30 -mx-5 mt-4 overflow-x-auto border-b border-line bg-cream/90 px-5 backdrop-blur-md sm:-mx-8 sm:px-8 lg:hidden">
         <ul className="flex gap-5 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
           {STUDIO_LINKS.map((l) => (
-            <li key={l.href}><a href={l.href} className="inline-block py-1.5 text-muted hover:text-ink">{l.label}</a></li>
+            <li key={l.href}><a href={l.href} aria-current={activeSection === l.href ? 'true' : undefined} className="nav-link inline-block py-1.5 text-muted transition-colors hover:text-ink aria-[current=true]:text-ink">{l.label}</a></li>
           ))}
         </ul>
       </nav>
@@ -92,10 +96,10 @@ export default function ResultsSection({
       <div id="photo" className="mt-6 scroll-mt-32">
         <DesignStudio form={form} photo={photo} originalUrl={imageUrl} recommendations={analysis.recommendations} />
       </div>
-      <div id="shop" className="mt-6 scroll-mt-32">
+      <div id="shop" className="reveal mt-6 scroll-mt-32">
         <FurniturePanel products={products} error={productsError} onRetry={retryProducts} retrying={retrying} />
       </div>
-      <Card id="designer-3d" className="mt-6 scroll-mt-32">
+      <Card id="designer-3d" className="reveal mt-6 scroll-mt-32">
         <div className="grid gap-6 md:grid-cols-[1fr_auto] md:items-center">
           <div className="max-w-xl">
             <p className="eyebrow">Optional</p>
@@ -119,7 +123,7 @@ export default function ResultsSection({
         </Suspense>
       )}
 
-      <details id="inspiration" className="group mt-8 scroll-mt-32 rounded-2xl border border-line bg-white/60 p-5">
+      <details id="inspiration" className="reveal group mt-8 scroll-mt-32 rounded-2xl border border-line bg-white/60 p-5">
         <summary className="cursor-pointer list-none">
           <span className="eyebrow">Inspiration · not your room</span>
           <span className="mt-2 block font-display text-2xl font-semibold">Explore the mood</span>
@@ -135,7 +139,7 @@ export default function ResultsSection({
         </div>
       </details>
 
-      <div id="analysis" className="mt-6 scroll-mt-32"><RoomAnalysisPanel analysis={analysis} /></div>
+      <div id="analysis" className="reveal mt-6 scroll-mt-32"><RoomAnalysisPanel analysis={analysis} /></div>
     </section>
   )
 }

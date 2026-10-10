@@ -157,8 +157,9 @@ export default function WallEditor({ design, wallId, selected, onSelect, dispatc
             {Array.from({ length: Math.floor(wall.span) }, (_, i) => <line key={`gx${i}`} x1={i + 1} y1={0} x2={i + 1} y2={wall.height} />)}
             {Array.from({ length: Math.floor(wall.height) }, (_, i) => <line key={`gy${i}`} x1={0} y1={sy(i + 1)} x2={wall.span} y2={sy(i + 1)} />)}
           </g>
-          <line x1={-0.3} y1={wall.height} x2={wall.span + 0.3} y2={wall.height} stroke="#242620" strokeWidth="0.06" />
-          <g fontSize="0.32" fill="#5c5f55" className="pointer-events-none">
+          {/* The floor line and labels sit on the page background, so they follow the theme. */}
+          <line x1={-0.3} y1={wall.height} x2={wall.span + 0.3} y2={wall.height} style={{ stroke: 'var(--color-ink)' }} strokeWidth="0.06" />
+          <g fontSize="0.32" className="pointer-events-none fill-muted">
             <text x={wall.span / 2} y={-0.45} textAnchor="middle">{formatFeet(wall.span)}</text>
             <text x={-0.45} y={wall.height / 2} textAnchor="middle" transform={`rotate(-90 ${-0.45} ${wall.height / 2})`}>{formatFeet(wall.height)}</text>
             <text x={0} y={wall.height + 0.45}>Left corner</text>

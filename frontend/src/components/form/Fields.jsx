@@ -14,7 +14,7 @@ export function FieldShell({ id, label, error, hint, required = true, children }
       {children}
       {hint && !error && <p id={`${id}-hint`} className="mt-1 text-xs text-muted">{hint}</p>}
       {error && (
-        <p id={`${id}-error`} role="alert" className="mt-1.5 text-xs font-medium text-red-700">
+        <p id={`${id}-error`} role="alert" className="anim-up mt-1.5 text-xs font-medium text-red-700">
           {error}
         </p>
       )}
@@ -40,7 +40,7 @@ export function SelectField({ id, label, value, onChange, options, error, requir
         onChange={(e) => onChange(e.target.value)}
         aria-invalid={!!error}
         aria-describedby={describe(id, error)}
-        className={`${inputClass(error)} cursor-pointer`}
+        className={`${inputClass(error)} cursor-pointer ${error ? 'anim-shake' : ''}`}
       >
         <option value="">{placeholder}</option>
         {options.map((o) => (
@@ -54,7 +54,7 @@ export function SelectField({ id, label, value, onChange, options, error, requir
 export function NumberField({ id, label, value, onChange, error, hint, suffix, prefix, min, max, step = 'any', required = true }) {
   return (
     <FieldShell id={id} label={label} error={error} hint={hint} required={required}>
-      <div className="relative">
+      <div className={`relative ${error ? 'anim-shake' : ''}`}>
         {prefix && (
           <span aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted">
             {prefix}

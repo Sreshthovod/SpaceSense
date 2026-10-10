@@ -1,4 +1,12 @@
-import { ArrowUpRight } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { ArrowUpRight, Check } from 'lucide-react'
+import { useTilt } from '../../hooks/usePointerEffects'
+
+// Directions for the little burst when a style is picked.
+const SPARKS = Array.from({ length: 10 }, (_, i) => {
+  const a = (i / 10) * Math.PI * 2
+  return { sx: `${Math.cos(a) * 46}px`, sy: `${Math.sin(a) * 46}px`, color: i % 2 ? 'var(--color-brass)' : 'var(--color-sage-light)' }
+})
 
 const tiles = [
   { id: 'modern-indian', name: 'Modern Indian', text: 'Warm timber, earthy tones and tactile textiles with a contemporary line.', img: '/images/style-modern-indian.jpg', alt: 'Living room with timber wall panels, terracotta cushion and dark stone fireplace', span: 'md:col-span-7' },
@@ -8,6 +16,17 @@ const tiles = [
 ]
 
 export default function DesignStyles({ onSelectStyle, selected }) {
+  const tilt = useTilt(5)
+  const [burst, setBurst] = useState(null) // { id, x, y, key }
+  const bursts = useRef(0)
+  const pick = (e, id) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    // Keyboard clicks report 0,0: burst from the centre then.
+    const x = e.clientX ? e.clientX - r.left : r.width / 2
+    const y = e.clientY ? e.clientY - r.top : r.height / 2
+    setBurst({ id, x, y, key: ++bursts.current })
+    onSelectStyle(id)
+  }
   return (
     <section id="styles" aria-labelledby="styles-heading" className="mx-auto max-w-7xl px-5 pb-20 sm:px-8 lg:pb-28">
       <div className="reveal flex flex-wrap items-end justify-between gap-4">
@@ -21,13 +40,14 @@ export default function DesignStyles({ onSelectStyle, selected }) {
         {tiles.map((t) => {
           const active = selected === t.id
           return (
+            <div key={t.id} className={`reveal ${t.span}`}>
             <button
-              key={t.id}
               type="button"
-              onClick={() => onSelectStyle(t.id)}
+              onClick={(e) => pick(e, t.id)}
+              {...tilt}
               aria-pressed={active}
               aria-label={`Start a redesign in the ${t.name} style`}
-              className={`reveal group relative block cursor-pointer overflow-hidden rounded-xl text-left transition-shadow hover:shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-dark ${t.span} ${active ? 'ring-2 ring-brass ring-offset-2 ring-offset-cream' : ''}`}
+              className={`tilt group relative block w-full cursor-pointer overflow-hidden rounded-xl text-left hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-dark ${active ? 'ring-2 ring-brass ring-offset-2 ring-offset-cream' : ''}`}
             >
               <img
                 src={t.img}
@@ -45,7 +65,21 @@ export default function DesignStyles({ onSelectStyle, selected }) {
                 </h3>
                 <p className="mt-1 max-w-sm text-xs leading-relaxed text-cream/85 sm:text-sm">{t.text}</p>
               </div>
+              <span aria-hidden="true" className="tilt-glare pointer-events-none absolute inset-0" />
+              {active && (
+                <span aria-hidden="true" className="anim-pop absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-brass text-white shadow-lg">
+                  <Check className="h-5 w-5" />
+                </span>
+              )}
+              {burst?.id === t.id && (
+                <span key={burst.key} aria-hidden="true" className="pointer-events-none absolute" style={{ left: burst.x, top: burst.y }}>
+                  {SPARKS.map((sp, i) => (
+                    <span key={i} className="spark" style={{ '--sx': sp.sx, '--sy': sp.sy, background: sp.color, left: -3, top: -3 }} />
+                  ))}
+                </span>
+              )}
             </button>
+            </div>
           )
         })}
       </div>

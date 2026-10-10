@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Camera, CircleHelp, Crosshair, Hand, Magnet, Maximize2, Move, MousePointer2, RotateCw } from 'lucide-react'
 import { MODES, PRESETS, PRESET_LABELS } from '../model/camera'
+import SlidingHighlight from './SlidingHighlight'
 
 const MODE_ICONS = { navigate: Hand, select: MousePointer2, move: Move, rotate: RotateCw }
-const chip = 'pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold shadow-sm hover:bg-white'
+const chip = 'press pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold shadow-sm transition-colors hover:bg-white'
 
 function Popover({ label, icon: Icon, children, align = 'right' }) {
   const [open, setOpen] = useState(false)
@@ -20,7 +21,7 @@ function Popover({ label, icon: Icon, children, align = 'right' }) {
         <Icon aria-hidden="true" className="h-3.5 w-3.5" /> {label}
       </button>
       {open && (
-        <div className={`absolute top-full z-20 mt-2 w-64 rounded-2xl border border-line bg-white p-2 text-xs shadow-xl ${align === 'right' ? 'right-0' : 'left-0'}`}>
+        <div className={`anim-scale absolute top-full z-20 mt-2 w-64 rounded-2xl border border-line bg-white p-2 text-xs shadow-xl ${align === 'right' ? 'right-0 origin-top-right' : 'left-0 origin-top-left'}`}>
           {children(() => setOpen(false))}
         </div>
       )}
@@ -38,7 +39,8 @@ export default function ViewportToolbar({ mode, setMode, snap, setSnap, view, se
     <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex flex-col gap-2">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <div role="group" aria-label="Interaction mode" className="pointer-events-auto flex rounded-full bg-white/95 p-0.5 shadow-sm">
+          <div role="group" aria-label="Interaction mode" className="pointer-events-auto relative flex rounded-full bg-white/95 p-0.5 shadow-sm">
+            <SlidingHighlight active={mode} />
             {MODES.map((m) => {
               const Icon = MODE_ICONS[m.id]
               return (
@@ -50,7 +52,7 @@ export default function ViewportToolbar({ mode, setMode, snap, setSnap, view, se
                   title={`${m.label} (${m.key.toUpperCase()})`}
                   aria-keyshortcuts={m.key.toUpperCase()}
                   aria-label={m.label}
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${mode === m.id ? 'bg-ink text-cream' : 'text-muted hover:text-ink'}`}
+                  className={`relative inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors duration-200 ${mode === m.id ? 'text-cream' : 'text-muted hover:text-ink'}`}
                 >
                   <Icon aria-hidden="true" className="h-3.5 w-3.5" />
                   <span aria-hidden="true" className="hidden sm:inline">{m.label}</span>
@@ -63,9 +65,10 @@ export default function ViewportToolbar({ mode, setMode, snap, setSnap, view, se
           </button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div role="group" aria-label="View" className="pointer-events-auto flex rounded-full bg-white/95 p-0.5 shadow-sm">
+          <div role="group" aria-label="View" className="pointer-events-auto relative flex rounded-full bg-white/95 p-0.5 shadow-sm">
+            <SlidingHighlight active={view} />
             {[['3d', '3D'], ['plan', 'Plan']].map(([id, label]) => (
-              <button key={id} type="button" aria-pressed={view === id} onClick={() => setView(id)} className={`rounded-full px-3 py-1 text-xs font-semibold ${view === id ? 'bg-ink text-cream' : 'text-muted hover:text-ink'}`}>
+              <button key={id} type="button" aria-pressed={view === id} onClick={() => setView(id)} className={`relative rounded-full px-3 py-1 text-xs font-semibold transition-colors duration-200 ${view === id ? 'text-cream' : 'text-muted hover:text-ink'}`}>
                 {label}
               </button>
             ))}
@@ -139,7 +142,7 @@ export default function ViewportToolbar({ mode, setMode, snap, setSnap, view, se
           </Popover>
         </div>
       </div>
-      <p className="pointer-events-auto self-start rounded-2xl bg-white/90 px-3 py-1 text-[11px] text-muted shadow-sm" data-testid="mode-hint">
+      <p key={`${mode}-${view}`} className="anim-fade pointer-events-auto self-start rounded-2xl bg-white/90 px-3 py-1 text-[11px] text-muted shadow-sm" data-testid="mode-hint">
         {view === 'plan' ? 'Plan view: drag empty space to pan, scroll or pinch to zoom. ' : ''}{current.hint}
       </p>
     </div>

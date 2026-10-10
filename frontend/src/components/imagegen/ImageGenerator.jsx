@@ -177,12 +177,15 @@ export default function ImageGenerator() {
 
         <Card className="flex min-h-[18rem] flex-col items-center justify-center">
           {pending ? (
-            <p role="status" className="flex items-center gap-2 text-sm text-muted">
-              <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> Creating your image. This can take up to a minute.
-            </p>
+            <div role="status" className="w-full">
+              <div aria-hidden="true" className="skeleton aspect-[4/3] w-full rounded-xl" />
+              <p className="mt-3 flex items-center gap-2 text-sm text-muted">
+                <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> Creating your image. This can take up to a minute.
+              </p>
+            </div>
           ) : result ? (
             <div className="w-full">
-              <img src={result} alt={`AI-generated image for: ${prompt.trim() || 'your prompt'}`} className="w-full rounded-xl border border-line" />
+              <img src={result} alt={`AI-generated image for: ${prompt.trim() || 'your prompt'}`} className="shutter-in w-full rounded-xl border border-line" />
               <div className="mt-4 flex justify-end">
                 <Button as="a" variant="secondary" href={result} download={`spacesense-image.${extensionOf(result)}`}>
                   <Download aria-hidden="true" className="h-4 w-4" /> Download

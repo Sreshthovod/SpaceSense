@@ -1,5 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Matrix4, Plane, Quaternion, Vector3 } from 'three'
+import { useFrame, useThree } from '@react-three/fiber'
+import { prefersReducedMotion } from '../../utils/motion'
 import { floorItemSpec } from '../model/catalog'
 import { isDrag } from '../model/camera'
 import { clampToRoom, footprint, snapFloor, snapRotationStep } from '../model/floorPlacement'
@@ -51,6 +53,54 @@ function Outline({ w, d, h, hover }) {
   return <lineSegments geometry={edges} material={hover ? hoverOutline : outline} position={[0, h / 2, 0]} scale={[w + 0.12, h + 0.12, d + 0.12]} raycast={() => null} dispose={null} />
 }
 
+const DROP_MS = 420
+const easeOutCubic = (t) => 1 - (1 - t) ** 3
+const easeOutBack = (t) => 1 + 2.2 * (t - 1) ** 3 + 1.2 * (t - 1) ** 2
+
+// Pieces that appear together (a template, a loaded design) drop one after another: each takes the
+// next slot in the current batch, and the batch ends after the commit.
+let batchSize = 0
+const nextSlot = () => {
+  if (batchSize === 0) setTimeout(() => { batchSize = 0 }, 0)
+  return Math.min(batchSize++, 30)
+}
+
+/**
+ * A new piece drops gently into place with a little settle. Purely visual: the item's real position
+ * never changes. Skipped with reduced motion.
+ */
+function DropIn({ children }) {
+  const ref = useRef(null)
+  const startAt = useRef(null)
+  const delay = useRef(0)
+  const done = useRef(prefersReducedMotion())
+  const invalidate = useThree((s) => s.invalidate)
+  useLayoutEffect(() => {
+    if (done.current || !ref.current) return
+    delay.current = nextSlot() * 45
+    ref.current.visible = false
+    invalidate() // the canvas renders on demand: ask for the first frame
+  }, [invalidate])
+  useFrame(() => {
+    const g = ref.current
+    if (done.current || !g) return
+    const now = performance.now()
+    if (startAt.current === null) startAt.current = now + delay.current
+    const t = Math.min(1, Math.max(0, (now - startAt.current) / DROP_MS))
+    g.visible = now >= startAt.current
+    g.position.y = (1 - easeOutCubic(t)) * 1.6
+    g.scale.setScalar(0.7 + 0.3 * easeOutBack(t))
+    if (t >= 1) {
+      g.position.y = 0
+      g.scale.setScalar(1)
+      g.visible = true
+      done.current = true
+    }
+    invalidate()
+  })
+  return <group ref={ref}>{children}</group>
+}
+
 function FloorItem({ item, selected, hovered, warned, handlers }) {
   const spec = floorItemSpec(item.catalogId)
   if (!spec) return null
@@ -63,7 +113,9 @@ function FloorItem({ item, selected, hovered, warned, handlers }) {
       rotation={[0, (item.rotation * Math.PI) / 180, 0]}
       {...handlers(item)}
     >
-      <FloorItemShape catalogId={item.catalogId} w={w} d={d} h={h} color={item.color || spec.color} />
+      <DropIn>
+        <FloorItemShape catalogId={item.catalogId} w={w} d={d} h={h} color={item.color || spec.color} />
+      </DropIn>
       {warned && <Halo w={w} d={d} warned />}
       {(selected || hovered) && <Outline w={w} d={d} h={Math.max(h, 0.05)} hover={!selected} />}
     </group>

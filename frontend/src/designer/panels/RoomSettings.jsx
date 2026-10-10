@@ -6,7 +6,7 @@ export function SourceBadge({ source }) {
   return source === 'measured' ? (
     <span className="rounded-full bg-sage/20 px-2 py-0.5 text-[11px] font-semibold text-sage-dark">Measured</span>
   ) : (
-    <span className="rounded-full bg-[#f4e3d7] px-2 py-0.5 text-[11px] font-semibold text-clay">Estimated</span>
+    <span className="rounded-full bg-accent-bg px-2 py-0.5 text-[11px] font-semibold text-clay">Estimated</span>
   )
 }
 

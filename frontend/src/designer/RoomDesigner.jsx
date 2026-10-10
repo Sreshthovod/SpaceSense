@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import ThemeToggle from '../components/layout/ThemeToggle'
 import {
   ArrowLeft, Box, ChevronLeft, ChevronRight, History, Home, LayoutTemplate, LibraryBig, MousePointerClick, PaintRoller, Redo2, Sofa, SquareDashed,
   TriangleAlert, Undo2, X,
@@ -56,7 +57,7 @@ const when = (iso) => new Date(iso).toLocaleString('en-IN', { day: 'numeric', mo
 function RecoveryBanner({ draft, onRecover, onFresh, onDismiss }) {
   if (draft.error) {
     return (
-      <div role="status" className="flex flex-wrap items-center gap-3 border-b border-line bg-[#fbefe9] px-4 py-2 text-xs sm:px-6">
+      <div role="status" className="flex flex-wrap items-center gap-3 border-b border-line bg-warn-bg px-4 py-2 text-xs sm:px-6">
         <span className="flex-1">Your last session couldn't be recovered: {draft.error}</span>
         <button type="button" onClick={onDismiss} className="rounded-full border border-line bg-white px-3 py-1 font-semibold">OK</button>
       </div>
@@ -331,7 +332,7 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
   ]
 
   return createPortal(
-    <div role="dialog" aria-modal="true" aria-labelledby="designer-heading" className="fixed inset-0 z-[60] flex flex-col bg-cream text-ink">
+    <div role="dialog" aria-modal="true" aria-labelledby="designer-heading" className="anim-fade fixed inset-0 z-[60] flex flex-col bg-cream text-ink">
       <header className="relative flex items-center justify-between gap-1.5 border-b border-line bg-cream px-2 py-1.5 sm:flex-wrap sm:gap-2 sm:px-4 sm:py-2">
         <div className="flex min-w-0 items-center gap-2">
           <button
@@ -354,10 +355,10 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
         </div>
         <div className="flex items-center gap-1.5 sm:flex-wrap sm:gap-2">
           <div className="flex items-center rounded-full border border-line bg-white">
-            <button type="button" onClick={undo} disabled={!canUndo} aria-label="Undo" title="Undo (Ctrl/Cmd+Z)" aria-keyshortcuts="Control+Z Meta+Z" className="rounded-l-full px-2.5 py-1.5 hover:bg-sand disabled:opacity-35">
+            <button type="button" onClick={undo} disabled={!canUndo} aria-label="Undo" title="Undo (Ctrl/Cmd+Z)" aria-keyshortcuts="Control+Z Meta+Z" className="press rounded-l-full px-2.5 py-1.5 hover:bg-sand disabled:opacity-35">
               <Undo2 aria-hidden="true" className="h-4 w-4" />
             </button>
-            <button type="button" onClick={redo} disabled={!canRedo} aria-label="Redo" title="Redo (Ctrl/Cmd+Shift+Z)" aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y" className="rounded-r-full border-l border-line px-2.5 py-1.5 hover:bg-sand disabled:opacity-35">
+            <button type="button" onClick={redo} disabled={!canRedo} aria-label="Redo" title="Redo (Ctrl/Cmd+Shift+Z)" aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y" className="press rounded-r-full border-l border-line px-2.5 py-1.5 hover:bg-sand disabled:opacity-35">
               <Redo2 aria-hidden="true" className="h-4 w-4" />
             </button>
           </div>
@@ -380,6 +381,7 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
           >
             {budget.data ? <BudgetMeter data={budget.data} compact /> : <span className="whitespace-nowrap text-[11px] font-semibold sm:text-xs">{formatINR(design.budget)}</span>}
           </button>
+          <ThemeToggle className="hidden h-9 w-9 sm:inline-flex" />
           <button
             type="button"
             onClick={onClose}
@@ -394,17 +396,20 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
 
       <div className="relative flex min-h-0 flex-1">
         {/* Library: a collapsible column on desktop, a slide-over drawer on smaller screens. */}
-        {drawerOpen && <div aria-hidden="true" className="fixed inset-0 z-30 bg-ink/30 lg:hidden" onClick={() => setDrawerOpen(false)} />}
+        {drawerOpen && <div aria-hidden="true" className="anim-fade fixed inset-0 z-30 bg-ink/30 lg:hidden" onClick={() => setDrawerOpen(false)} />}
         <aside
           aria-label="Design library"
-          className={`${drawerOpen ? 'fixed inset-y-0 left-0 z-40 flex w-[min(22rem,88vw)] shadow-xl' : 'hidden'} flex-col border-r border-line bg-cream lg:static lg:z-auto lg:flex lg:shadow-none ${leftOpen ? 'lg:w-80' : 'lg:w-0 lg:overflow-hidden lg:border-r-0'}`}
+          className={`${drawerOpen ? 'max-lg:anim-drawer fixed inset-y-0 left-0 z-40 flex w-[min(22rem,88vw)] shadow-xl' : 'hidden'} flex-col border-r border-line bg-cream lg:static lg:z-auto lg:flex lg:shrink-0 lg:overflow-hidden lg:shadow-none lg:transition-[width] lg:duration-300 lg:ease-[var(--ease-out)] ${leftOpen ? 'lg:w-80' : 'lg:w-0 lg:border-r-0'}`}
         >
           <div className="flex items-center justify-end px-2 pt-2 lg:hidden">
             <button type="button" onClick={() => setDrawerOpen(false)} aria-label="Close the design library" className="rounded-full p-1.5 hover:bg-sand">
               <X aria-hidden="true" className="h-4 w-4" />
             </button>
           </div>
-          <Sidebar tabs={libraryTabs} tab={tab} setTab={setTab} />
+          {/* Fixed width inside, so the column slides shut instead of squashing its contents. */}
+          <div className="flex min-h-0 w-full flex-1 flex-col lg:w-80">
+            <Sidebar tabs={libraryTabs} tab={tab} setTab={setTab} />
+          </div>
         </aside>
 
         <section aria-label="Room view" className="relative flex min-h-0 min-w-0 flex-1 flex-col">
@@ -484,7 +489,7 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
               {warnings.length > 0 && (
                 <ul aria-live="polite" className="absolute bottom-3 left-3 right-3 max-h-28 space-y-0.5 overflow-y-auto rounded-xl bg-white/95 px-3 py-2 text-xs shadow-sm sm:right-auto sm:max-w-md">
                   {warnings.map((w) => (
-                    <li key={`${w.kind}-${w.ids.join('-')}`} className={`flex items-center gap-1.5 ${w.kind === 'overlap' || w.kind === 'too-big' ? 'text-red-700' : 'text-clay'}`}>
+                    <li key={`${w.kind}-${w.ids.join('-')}`} className={`anim-from-left flex items-center gap-1.5 ${w.kind === 'overlap' || w.kind === 'too-big' ? 'text-red-700' : 'text-clay'}`}>
                       <TriangleAlert aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /> {w.message}
                     </li>
                   ))}
@@ -501,7 +506,7 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
             a bottom sheet on smaller screens that only appears when there's something to show. */}
         <aside
           aria-label={activeWall ? 'Wall tools' : budgetOpen && !selectedItem ? 'Budget' : 'Inspector'}
-          className={`${rightPanel ? 'fixed' : 'hidden'} inset-x-0 bottom-0 z-30 max-h-[55vh] overflow-y-auto rounded-t-2xl border-t border-line bg-cream p-4 shadow-[0_-8px_24px_rgba(36,38,32,0.12)] lg:static lg:z-auto lg:block lg:max-h-none lg:w-80 lg:shrink-0 lg:rounded-none lg:border-l lg:border-t-0 lg:shadow-none`}
+          className={`${rightPanel ? 'max-lg:anim-sheet fixed' : 'hidden'} inset-x-0 bottom-0 z-30 max-h-[55vh] overflow-y-auto rounded-t-2xl border-t border-line bg-cream p-4 shadow-[0_-8px_24px_rgba(36,38,32,0.12)] lg:static lg:z-auto lg:block lg:max-h-none lg:w-80 lg:shrink-0 lg:rounded-none lg:border-l lg:border-t-0 lg:shadow-none`}
         >
             {!rightPanel && (
               <div className="flex h-full flex-col items-center justify-center px-4 text-center text-sm text-muted">
@@ -525,7 +530,7 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
             {activeWall ? (
               <WallPanel design={design} wallId={activeWall} selected={selected} dispatch={dispatch} onAdd={addWallItem} catalog={catalog} catalogError={catalogError} />
             ) : selectedItem && !selectedItem.wall ? (
-              <Inspector item={selectedItem} design={design} mode={mode} dispatch={dispatch} onDuplicate={duplicateSelected} onDelete={deleteSelected} onDeselect={() => setSelected(null)} catalog={catalog} catalogError={catalogError} />
+              <div key={selectedItem.uid} className="anim-fade"><Inspector item={selectedItem} design={design} mode={mode} dispatch={dispatch} onDuplicate={duplicateSelected} onDelete={deleteSelected} onDeselect={() => setSelected(null)} catalog={catalog} catalogError={catalogError} /></div>
             ) : null}
         </aside>
       </div>

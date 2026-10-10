@@ -14,7 +14,7 @@ function ChipGroup({ legend, value, options, onChange }) {
       <legend className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted">{legend}</legend>
       <div className="flex gap-2">
         {options.map((opt) => (
-          <label key={opt.id} className={`cursor-pointer rounded-full border px-3 py-1.5 text-sm ${value === opt.id ? 'border-ink bg-ink text-cream' : 'border-line bg-white hover:bg-sand'}`}>
+          <label key={opt.id} className={`press cursor-pointer rounded-full border px-3 py-1.5 text-sm transition-colors duration-200 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-sage-dark ${value === opt.id ? 'border-ink bg-ink text-cream' : 'border-line bg-white hover:bg-sand'}`}>
             <input type="radio" name={legend} value={opt.id} checked={value === opt.id} onChange={() => onChange(opt.id)} className="sr-only" />
             {opt.label}
           </label>

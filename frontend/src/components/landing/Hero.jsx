@@ -1,10 +1,13 @@
 import { useEffect, useRef } from 'react'
-import { ArrowRight, ArrowUpRight } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, ChevronDown } from 'lucide-react'
 import usePrefersReducedMotion from '../../hooks/usePrefersReducedMotion'
+import { useParallax } from '../../hooks/usePointerEffects'
 
 export default function Hero({ onStart, onOpenDesigner }) {
   const reduced = usePrefersReducedMotion()
   const photoRef = useRef(null)
+  // Scroll moves the photo down; the pointer adds a little sideways depth on top (separate properties).
+  const depthRef = useParallax(18)
 
   useEffect(() => {
     if (reduced) return undefined
@@ -21,6 +24,7 @@ export default function Hero({ onStart, onOpenDesigner }) {
   return (
     <section id="top" className="relative isolate flex min-h-[calc(100svh-4rem)] flex-col overflow-hidden">
       <div ref={photoRef} className="absolute inset-0 -z-20 overflow-hidden">
+        <div ref={depthRef} className="absolute -inset-6 transition-[translate] duration-700 ease-[var(--ease-out)]">
         <img
           src="/images/hero.jpg"
           alt="Sunlit living room with warm wood panelling, a cream sofa and a low timber coffee table"
@@ -29,6 +33,7 @@ export default function Hero({ onStart, onOpenDesigner }) {
           fetchPriority="high"
           className="hero-photo h-[115%] w-full object-cover object-[65%_center]"
         />
+        </div>
       </div>
       <div
         aria-hidden="true"
@@ -49,7 +54,7 @@ export default function Hero({ onStart, onOpenDesigner }) {
             <a
               href="#redesign"
               onClick={onStart}
-              className="group inline-flex min-h-12 items-center gap-3 bg-brass px-8 py-4 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-white transition-colors duration-200 hover:bg-ink"
+              className="press group relative inline-flex min-h-12 items-center gap-3 overflow-hidden bg-brass px-8 py-4 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-white transition-colors duration-200 hover:bg-ink"
             >
               Plan My Room <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
             </a>
@@ -69,6 +74,14 @@ export default function Hero({ onStart, onOpenDesigner }) {
           </p>
         </div>
       </div>
+      <a
+        href="#transformation"
+        aria-label="Scroll to see a transformation"
+        className="absolute bottom-5 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-1 text-[0.65rem] uppercase tracking-[0.2em] text-ink/60 transition-colors hover:text-ink sm:flex"
+      >
+        Scroll
+        <ChevronDown aria-hidden="true" className="anim-nudge h-4 w-4" />
+      </a>
     </section>
   )
 }

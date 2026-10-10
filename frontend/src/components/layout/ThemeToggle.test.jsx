@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import ThemeToggle from './ThemeToggle'
+import ThemeToggle, { ThemeChoice } from './ThemeToggle'
 
 const root = document.documentElement
 
@@ -69,5 +69,39 @@ describe('ThemeToggle', () => {
     fireEvent(window, new StorageEvent('storage', { key: 'spacesense-theme', newValue: 'dark' }))
     expect(root.dataset.theme).toBe('dark')
     expect(screen.getByRole('button', { name: 'Dark mode' }).getAttribute('aria-pressed')).toBe('true')
+  })
+})
+
+describe('ThemeChoice', () => {
+  it('offers Light, Dark and System, and System forgets the saved choice', () => {
+    root.dataset.theme = 'light'
+    const setSystem = mockSystem(true)
+    render(<ThemeChoice />)
+    const radio = (name) => screen.getByRole('radio', { name })
+    expect(radio('System').getAttribute('aria-checked')).toBe('true')
+
+    fireEvent.click(radio('Light'))
+    expect(localStorage.getItem('spacesense-theme')).toBe('light')
+    expect(root.dataset.theme).toBe('light')
+    expect(radio('Light').getAttribute('aria-checked')).toBe('true')
+
+    fireEvent.click(radio('System'))
+    expect(localStorage.getItem('spacesense-theme')).toBeNull()
+    expect(root.dataset.theme).toBe('dark') // the system is dark
+    setSystem(false)
+    expect(root.dataset.theme).toBe('light') // and it follows the system again
+  })
+
+  it('keeps the browser chrome colour in step with the theme', () => {
+    const meta = document.createElement('meta')
+    meta.name = 'theme-color'
+    document.head.append(meta)
+    root.dataset.theme = 'light'
+    render(<ThemeChoice />)
+    fireEvent.click(screen.getByRole('radio', { name: 'Dark' }))
+    expect(meta.getAttribute('content')).toBe('#161713')
+    fireEvent.click(screen.getByRole('radio', { name: 'Light' }))
+    expect(meta.getAttribute('content')).toBe('#f7f5f0')
+    meta.remove()
   })
 })

@@ -16,11 +16,11 @@ function Thumb({ id, catalog }) {
   const product = catalog?.types?.[id]?.products?.find((p) => safeHttpsUrl(p.image_url))
   const src = product && safeHttpsUrl(product.image_url)
   if (src && !failed) {
-    return <img src={src} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} className="h-12 w-12 shrink-0 rounded-lg bg-white object-contain" />
+    return <img src={src} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} className="h-12 w-12 shrink-0 rounded-lg bg-white object-contain transition-transform duration-300 ease-[var(--ease-spring)] group-hover/piece:scale-110" />
   }
   const Icon = ICONS[FLOOR_ITEMS[id].category] || Sofa
   return (
-    <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg" style={{ background: `${FLOOR_ITEMS[id].color}33` }}>
+    <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 ease-[var(--ease-spring)] group-hover/piece:scale-110 group-hover/piece:-rotate-3" style={{ background: `${FLOOR_ITEMS[id].color}33` }}>
       <Icon className="h-5 w-5" style={{ color: FLOOR_ITEMS[id].color }} />
     </span>
   )
@@ -37,7 +37,7 @@ function Card({ id, catalog, onPick, recent = false }) {
         // A mouse click starts a placement preview; Enter or Space (detail 0) adds it straight away.
         onClick={(e) => onPick(id, e.detail === 0)}
         aria-label={`Add ${spec.name.toLowerCase()}${recent ? ' (recently used)' : ''}`}
-        className="flex w-full items-center gap-2 rounded-xl border border-line bg-white p-2 text-left hover:border-sage hover:bg-sand/50"
+        className="group/piece press flex w-full items-center gap-2 rounded-xl border border-line bg-white p-2 text-left transition-[border-color,background-color,transform,box-shadow] duration-200 hover:translate-x-0.5 hover:border-sage hover:bg-sand/50 hover:shadow-sm"
       >
         <Thumb id={id} catalog={catalog} />
         <span className="min-w-0">
@@ -67,7 +67,7 @@ export default function CatalogPanel({ catalog, recent, onPick, placingName, onC
     <section aria-labelledby="catalog-heading">
       <h3 id="catalog-heading" className="font-display text-xl font-semibold">Add furniture</h3>
       {placingName ? (
-        <p role="status" className="mt-2 flex items-center justify-between gap-2 rounded-xl bg-sage/15 px-3 py-2 text-xs">
+        <p role="status" className="anim-up mt-2 flex items-center justify-between gap-2 rounded-xl bg-sage/15 px-3 py-2 text-xs">
           <span>Click the floor to place the {placingName}. Esc cancels.</span>
           <button type="button" onClick={onCancelPlacing} className="rounded-full border border-line bg-white px-2 py-0.5 font-semibold">Cancel</button>
         </p>
@@ -94,7 +94,7 @@ export default function CatalogPanel({ catalog, recent, onPick, placingName, onC
             type="button"
             aria-pressed={category === c.id}
             onClick={() => setCategory(c.id)}
-            className={`rounded-full border px-2 py-0.5 text-[11px] ${category === c.id ? 'border-ink bg-ink text-cream' : 'border-line bg-white hover:bg-sand'}`}
+            className={`press rounded-full border px-2 py-0.5 text-[11px] transition-colors duration-200 ${category === c.id ? 'border-ink bg-ink text-cream' : 'border-line bg-white hover:bg-sand'}`}
           >
             {c.label}
           </button>

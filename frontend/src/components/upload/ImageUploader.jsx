@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ImagePlus, Trash2 } from 'lucide-react'
 import { IMAGE_TYPES, MAX_IMAGE_MB } from '../../utils/validation'
 
@@ -10,13 +10,30 @@ export default function ImageUploader({ file, previewUrl, error, onSelect, onCle
     if (files && files[0]) onSelect(files[0])
   }
 
+  // Paste a screenshot or copied photo straight in (Cmd/Ctrl+V), unless the user is typing in a field.
+  const onSelectRef = useRef(onSelect)
+  useEffect(() => { onSelectRef.current = onSelect })
+  useEffect(() => {
+    if (previewUrl) return undefined
+    const onPaste = (e) => {
+      if (e.target.closest?.('input, textarea, select, [contenteditable="true"]')) return
+      const image = [...(e.clipboardData?.files ?? [])].find((f) => f.type.startsWith('image/'))
+      if (image) {
+        e.preventDefault()
+        onSelectRef.current(image)
+      }
+    }
+    document.addEventListener('paste', onPaste)
+    return () => document.removeEventListener('paste', onPaste)
+  }, [previewUrl])
+
   return (
     <div>
       <span id="upload-label" className="mb-2 block text-sm font-semibold text-ink">
         Room photo <span className="ml-0.5 text-clay text-xs font-normal" title="Required">*</span>
       </span>
       {previewUrl ? (
-        <div className="relative overflow-hidden rounded-2xl border border-line bg-sand">
+        <div className="anim-pop relative overflow-hidden rounded-2xl border border-line bg-sand">
           <img
             src={previewUrl}
             alt="Preview of your uploaded room"
@@ -55,9 +72,9 @@ export default function ImageUploader({ file, previewUrl, error, onSelect, onCle
             dragging ? 'drop-active scale-[1.015] border-sage-dark bg-sage/15' : error ? 'border-red-400 bg-red-50/50' : 'border-line bg-cream hover:border-sage/60 hover:bg-sand/60'
           }`}
         >
-          <ImagePlus aria-hidden="true" className="h-8 w-8 text-sage-dark" />
-          <span className="font-semibold text-ink">Click to upload or drag and drop</span>
-          <span id="upload-hint" className="text-xs text-muted">JPG, PNG or WebP, up to {MAX_IMAGE_MB} MB</span>
+          <ImagePlus aria-hidden="true" className={`h-8 w-8 text-sage-dark transition-transform duration-300 ease-[var(--ease-spring)] ${dragging ? '-translate-y-1 scale-125' : ''}`} />
+          <span className="font-semibold text-ink">{dragging ? 'Drop your photo here' : 'Click to upload or drag and drop'}</span>
+          <span id="upload-hint" className="text-xs text-muted">JPG, PNG or WebP, up to {MAX_IMAGE_MB} MB. You can also paste an image.</span>
         </button>
       )}
       <input

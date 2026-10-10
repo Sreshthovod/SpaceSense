@@ -18,7 +18,13 @@ const STEP_FIELDS = {
 }
 
 export default function RoomForm({ form, setForm, image, setImage, onSubmit, submitting, apiError }) {
-  const [step, setStep] = useState(1)
+  const [step, setStepState] = useState(1)
+  const [dir, setDir] = useState('forward') // which way the step panels slide
+  const setStep = (update) => {
+    const n = typeof update === 'function' ? update(step) : update
+    setDir(n < step ? 'back' : 'forward')
+    setStepState(n)
+  }
   const [errors, setErrors] = useState({})
   const [imageError, setImageError] = useState('')
   const formRef = useRef(null)
@@ -71,6 +77,7 @@ export default function RoomForm({ form, setForm, image, setImage, onSubmit, sub
       <div>
         <Stepper step={step} onJump={(n) => { if (n < step || validateStep(step)) setStep(n) }} />
 
+        <div key={step} className={dir === 'back' ? 'anim-from-left' : 'anim-from-right'}>
         {step === 1 && (
           <div className="grid gap-6">
             <Card>
@@ -124,6 +131,7 @@ export default function RoomForm({ form, setForm, image, setImage, onSubmit, sub
             </ul>
           </Card>
         )}
+        </div>
 
         {apiError && <p role="alert" className="mt-4 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-800">{apiError}</p>}
 

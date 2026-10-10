@@ -31,7 +31,7 @@ export default function Sidebar({ tabs, tab, setTab, idPrefix = 'lib' }) {
               aria-controls={`${idPrefix}-panel-${t.id}`}
               tabIndex={selected ? 0 : -1}
               onClick={() => setTab(t.id)}
-              className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-2 pb-2 pt-1 text-xs font-semibold ${selected ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'}`}
+              className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-2 pb-2 pt-1 text-xs font-semibold transition-colors duration-200 ${selected ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'}`}
             >
               <Icon aria-hidden="true" className="h-3.5 w-3.5" /> {t.label}
             </button>
@@ -45,7 +45,7 @@ export default function Sidebar({ tabs, tab, setTab, idPrefix = 'lib' }) {
           role="tabpanel"
           aria-labelledby={`${idPrefix}-tab-${t.id}`}
           hidden={t.id !== tab}
-          className="min-h-0 flex-1 overflow-y-auto p-4"
+          className="anim-fade min-h-0 flex-1 overflow-y-auto p-4"
         >
           {t.content}
         </div>

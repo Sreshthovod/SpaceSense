@@ -1,14 +1,20 @@
 import { useState } from 'react'
-import { Bookmark, Link2 } from 'lucide-react'
+import { Bookmark, Check, Link2 } from 'lucide-react'
 import Button from '../ui/Button'
+import { useToast } from '../../context/toast'
 
 export default function ShareLooks({ looks, onSave, onCopy, onRestore }) {
   const [note, setNote] = useState('')
+  const [copied, setCopied] = useState(false)
+  const { toast } = useToast()
 
   const copy = async () => {
     const ok = await onCopy()
     setNote(ok ? 'Link copied' : 'Could not copy')
-    setTimeout(() => setNote(''), 2000)
+    setCopied(ok)
+    if (ok) toast('Brief link copied to the clipboard.')
+    else toast('Could not copy the link.', { tone: 'error' })
+    setTimeout(() => { setNote(''); setCopied(false) }, 2000)
   }
 
   return (
@@ -17,7 +23,7 @@ export default function ShareLooks({ looks, onSave, onCopy, onRestore }) {
         <Bookmark aria-hidden="true" className="h-4 w-4" /> Save brief
       </Button>
       <Button variant="ghost" onClick={copy}>
-        <Link2 aria-hidden="true" className="h-4 w-4" /> Copy brief link
+        {copied ? <Check aria-hidden="true" className="check-pop h-4 w-4 text-sage-dark" /> : <Link2 aria-hidden="true" className="h-4 w-4" />} Copy brief link
       </Button>
       {looks.length > 0 && (
         <label className="text-sm">

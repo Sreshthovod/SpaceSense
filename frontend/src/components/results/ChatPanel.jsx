@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Loader2, MessageCircle, RotateCcw, Send } from 'lucide-react'
+import { MessageCircle, RotateCcw, Send } from 'lucide-react'
 import { sendChat } from '../../services/api'
 import Button from '../ui/Button'
 import Card from '../ui/Card'
@@ -74,11 +74,11 @@ export default function ChatPanel({ form, photo, recommendations }) {
 
       <div ref={listRef} aria-live="polite" aria-label="Conversation" className="mt-4 max-h-96 space-y-3 overflow-y-auto">
         {messages.length === 0 && (
-          <div className="flex flex-wrap gap-2">
-            {SUGGESTIONS.map((s) => (
+          <div className="stagger flex flex-wrap gap-2">
+            {SUGGESTIONS.map((s, i) => (
               <button
-                key={s} type="button" onClick={() => submit(s)} disabled={pending}
-                className="rounded-full border border-line bg-cream px-3 py-1.5 text-left text-xs font-medium hover:bg-sand disabled:opacity-50"
+                key={s} type="button" onClick={() => submit(s)} disabled={pending} style={{ '--i': i }}
+                className="press rounded-full border border-line bg-cream px-3 py-1.5 text-left text-xs font-medium transition-colors hover:border-sage hover:bg-sand disabled:opacity-50"
               >
                 {s}
               </button>
@@ -86,7 +86,7 @@ export default function ChatPanel({ form, photo, recommendations }) {
           </div>
         )}
         {messages.map((m, i) => (
-          <div key={i} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
+          <div key={i} className={`anim-up ${m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}`}>
             <p
               className={`max-w-[85%] whitespace-pre-line rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                 m.role === 'user' ? 'bg-ink text-cream' : 'border border-line bg-cream'
@@ -98,9 +98,16 @@ export default function ChatPanel({ form, photo, recommendations }) {
           </div>
         ))}
         {pending && (
-          <p role="status" className="flex items-center gap-2 text-sm text-muted">
-            <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> SpaceSense is thinking…
-          </p>
+          <div role="status" className="anim-up flex justify-start">
+            <p className="flex items-center gap-2 rounded-2xl border border-line bg-cream px-4 py-3 text-sm text-muted">
+              <span aria-hidden="true" className="flex gap-1">
+                <span className="typing-dot h-1.5 w-1.5 rounded-full bg-sage-dark" />
+                <span className="typing-dot h-1.5 w-1.5 rounded-full bg-sage-dark" />
+                <span className="typing-dot h-1.5 w-1.5 rounded-full bg-sage-dark" />
+              </span>
+              <span className="sr-only sm:not-sr-only">SpaceSense is thinking…</span>
+            </p>
+          </div>
         )}
       </div>
 
