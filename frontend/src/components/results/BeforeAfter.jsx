@@ -19,8 +19,9 @@ export default function BeforeAfter({ originalUrl, styleId, mood, lighting }) {
             style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}
           />
         )}
-        <span className="absolute top-4 left-4 rounded bg-cream/90 px-3 py-1.5 text-xs font-semibold tracking-[0.16em] uppercase">Original</span>
-        <span className="absolute top-4 right-4 rounded bg-ink/90 px-3 py-1.5 text-xs font-semibold tracking-[0.16em] text-cream uppercase">{style?.name || 'Look'}</span>
+        <span className="absolute top-4 left-4 rounded bg-cream/90 px-3 py-1.5 text-xs font-semibold tracking-[0.16em] uppercase">Your photo</span>
+        <span className="absolute top-4 right-4 rounded bg-ink/90 px-3 py-1.5 text-xs font-semibold tracking-[0.16em] text-cream uppercase">{style?.name || 'Look'} · stock photo</span>
+        <span className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-ink/85 px-3 py-1 text-[11px] font-semibold text-cream">Right side is a stock photo, not your room edited</span>
         <input
           type="range"
           min="0"
@@ -32,7 +33,7 @@ export default function BeforeAfter({ originalUrl, styleId, mood, lighting }) {
         />
         <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-0.5 bg-white shadow-md" style={{ left: `${pos}%` }} />
       </div>
-      <p className="mt-2 text-xs text-muted">Style photography is illustrative. Mood and lighting are graded on the concept image; they do not rewrite your original file.</p>
+      <p className="mt-2 text-xs text-muted">The right side is illustrative stock photography of this style, not a version of your room. Mood and lighting are graded on the concept image; they do not rewrite your original file.</p>
     </div>
   )
 }

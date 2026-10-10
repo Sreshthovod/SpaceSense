@@ -5,10 +5,11 @@ import Hero from './components/landing/Hero'
 import BeforeAfter from './components/landing/BeforeAfter'
 import HowItWorks from './components/landing/HowItWorks'
 import DesignStyles from './components/landing/DesignStyles'
-import BudgetFirst from './components/landing/BudgetFirst'
 import FinalCTA from './components/landing/FinalCTA'
 import ImageGenerator from './components/imagegen/ImageGenerator'
 import useReveal from './hooks/useReveal'
+import useAuthRoute from './hooks/useAuthRoute'
+import AuthRouter from './components/auth/AuthRouter'
 import usePrefersReducedMotion from './hooks/usePrefersReducedMotion'
 import { fetchRoomPlan } from './services/api'
 import RoomForm from './components/form/RoomForm'
@@ -44,7 +45,19 @@ export default function App() {
 
   // Revoke object URLs when replaced or on unmount.
   useEffect(() => () => { if (image.url) URL.revokeObjectURL(image.url) }, [image.url])
-  useReveal(phase)
+  // Account pages live at #/login, #/signup ... and replace the page body (the navbar and footer stay).
+  const authRoute = useAuthRoute()
+  useReveal(authRoute ? 'auth' : phase)
+  const wasAuthRoute = useRef(false)
+  useEffect(() => {
+    // Leaving an account page via a section link (#styles): the section only exists once the landing page is back.
+    if (wasAuthRoute.current && !authRoute) {
+      const id = window.location.hash.slice(1)
+      if (id) requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' }))
+      else window.scrollTo(0, 0)
+    }
+    wasAuthRoute.current = !!authRoute
+  }, [authRoute, reduced])
 
   const restoreLook = (look) => {
     setForm({ ...EMPTY_FORM, ...look.form })
@@ -137,10 +150,12 @@ export default function App() {
   return (
     <div className="flex min-h-screen flex-col">
       <a href="#main-content" className="skip-link">Skip to main content</a>
-      <Navbar onHome={leaveResults} studio={studio} onOpenDesigner={openDesigner} />
+      <Navbar onHome={leaveResults} studio={studio && !authRoute} onOpenDesigner={openDesigner} onReset={reset} />
       {phase === 'composing' && <StudioCurtain form={form} imageUrl={image.url} />}
       <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">
-        {phase === 'studio' && result ? (
+        {authRoute ? (
+          <AuthRouter route={authRoute} />
+        ) : phase === 'studio' && result ? (
           <ResultsSection
             key={studioKey}
             form={form}
@@ -160,9 +175,6 @@ export default function App() {
             <BeforeAfter />
             <HowItWorks />
             <DesignStyles onSelectStyle={selectStyle} selected={form.style} />
-            <BudgetFirst />
-            <ImageGenerator />
-            <FinalCTA onStart={leaveResults} />
             <section id="redesign" aria-labelledby="form-heading" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:py-28">
               <p className="eyebrow">Design My Space</p>
               <h2 id="form-heading" className="mt-4 font-display text-4xl font-medium leading-none sm:text-5xl lg:text-6xl">Tell us about your room.</h2>
@@ -172,6 +184,8 @@ export default function App() {
               )}
               <RoomForm form={form} setForm={setForm} image={image} setImage={setImage} onSubmit={submit} submitting={submitting} apiError={apiError} />
             </section>
+            <ImageGenerator />
+            <FinalCTA onStart={leaveResults} />
           </>
         )}
       </main>

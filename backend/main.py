@@ -12,6 +12,7 @@ from pydantic import BaseModel, ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from config import get_allowed_origin_regex, get_allowed_origins
+from routes_auth import router as auth_router
 from schemas import (
     ChatReply,
     ChatRequest,
@@ -26,6 +27,7 @@ from schemas import (
     StudioPriceRequest,
 )
 from services.images import ImageValidationError, RoomImage, max_upload_bytes, validate_image
+from services import auth as auth_service
 from services import imagegen
 from services import vision
 from services.products import CATALOG_PATH, CatalogError, get_product_sources, load_catalog, recommend
@@ -41,6 +43,7 @@ M = TypeVar("M", bound=BaseModel)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     # Fail fast on a malformed catalog, an unknown provider name or missing provider credentials.
+    auth_service.init_db()
     load_catalog(CATALOG_PATH)
     load_mapping(STUDIO_CATALOG_PATH)
     get_product_sources()
@@ -56,9 +59,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=get_allowed_origins(),
     allow_origin_regex=get_allowed_origin_regex(),
+    allow_credentials=True,  # the session cookie; origins are never "*"
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "X-Requested-With"],
 )
+app.include_router(auth_router)
 
 
 def error(status: int, code: str, message: str | None = None, field: str = "body") -> JSONResponse:
@@ -73,6 +78,14 @@ async def validation_error_handler(_: Request, exc: RequestValidationError):
         for e in exc.errors()
     ]
     return JSONResponse(status_code=422, content={"error": "validation_error", "details": details})
+
+
+@app.exception_handler(auth_service.AuthError)
+async def auth_error_handler(_: Request, exc: auth_service.AuthError):
+    response = error(exc.status, "auth_error", str(exc), field=exc.field)
+    if exc.retry_after:
+        response.headers["Retry-After"] = str(exc.retry_after)
+    return response
 
 
 @app.exception_handler(ImageValidationError)

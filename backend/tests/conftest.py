@@ -5,7 +5,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 import main
-from services import imagegen, products, providers
+import routes_auth
+from services import auth, imagegen, products, providers
 
 
 
@@ -45,8 +46,14 @@ APPROVED = {"items": ["Paint the walls warm white", "Replace the sofa with a lig
 
 
 @pytest.fixture(autouse=True)
-def isolated_env(monkeypatch):
+def isolated_env(monkeypatch, tmp_path):
     """Tests never use real credentials or whatever providers backend/.env selects."""
+    monkeypatch.setenv("SPACESENSE_DB_PATH", str(tmp_path / "test.db"))
+    monkeypatch.setenv("SPACESENSE_SCRYPT_N", "16")  # cheap hashing; production default is 32768
+    for var in ("SMTP_HOST", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "SPACESENSE_COOKIE_SECURE"):
+        monkeypatch.delenv(var, raising=False)
+    auth.reset_throttles()
+    routes_auth.reset_limiters()
     monkeypatch.setenv("SPACESENSE_ANALYSIS_PROVIDER", "rule_based")
     monkeypatch.setenv("SPACESENSE_DESIGN_PROVIDER", "mock")
     monkeypatch.setenv("SPACESENSE_PRODUCT_PROVIDER", "catalog")

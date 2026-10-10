@@ -3,7 +3,6 @@ import { Home } from 'lucide-react'
 const links = [
   { href: '#how-it-works', label: 'How It Works' },
   { href: '#styles', label: 'Design Styles' },
-  { href: '#about', label: 'About' },
   { href: '#redesign', label: 'Design My Space' },
 ]
 
@@ -17,7 +16,7 @@ export default function Footer({ onHome }) {
           <a href="#top" onClick={onHome} aria-label="SpaceSense home" className="inline-flex items-center gap-2.5 font-display text-2xl font-semibold text-ink focus-visible:outline-2 focus-visible:outline-offset-2">
             <Home aria-hidden="true" strokeWidth={1.5} className="h-5 w-5 text-sage-dark" /> SpaceSense
           </a>
-          <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted">AI-assisted interior redesign, shaped around your style, budget and way of living. A hackathon prototype in active development.</p>
+          <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted">AI-assisted room advice, shaped around your style and budget. Saved briefs live in this browser only, product prices are as of the date checked, and AI-edited photos can be inaccurate.</p>
         </div>
         <nav aria-label="Footer" className="md:col-span-6 md:justify-self-end">
           <ul className="grid grid-cols-2 gap-x-12 gap-y-3 text-sm">

@@ -145,6 +145,17 @@ Notes:
 - **Image editing needs quota for the image model.** On the free tier, `gemini-3.1-flash-image` requests can be rejected with HTTP 429 (shown in the app as "reached its usage limit"). Enable billing on the Google project, or wait for the quota to reset.
 - Analysis with `gemini-3.5-flash-lite` takes a few seconds; larger models such as `gemini-3.8-flash` took around a minute in testing. Image edits take longer. Automated tests never call Gemini; they use fake clients.
 
+## Accounts and login
+
+Login is optional: the planner works without an account. Pages live at `#/login`, `#/signup`, `#/forgot-password`, `#/reset-password`, `#/verify-email` and `#/account`.
+
+- **Storage:** SQLite at `backend/data/spacesense.db` (git-ignored, created on first start).
+- **Passwords:** hashed with scrypt. Sessions are random tokens in an httpOnly, SameSite=Lax cookie; only a hash of each token is stored. Logging in is throttled per email and per IP.
+- **CSRF:** every state-changing `/auth` route needs the header `X-Requested-With: SpaceSense`, and CORS only allows your frontend origin.
+- **Email (verification and reset):** set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` in `backend/.env`. With `SMTP_HOST` empty (development), the links are printed in the backend log instead of being sent.
+- **Google sign-in:** create a Web OAuth client in Google Cloud Console, add `http://localhost:8000/auth/google/callback` as an authorised redirect URI, and set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. The button only appears when both are set.
+- **Production:** serve over HTTPS and set `SPACESENSE_COOKIE_SECURE=true`, `SPACESENSE_FRONTEND_URL` and `SPACESENSE_CORS_ORIGINS` to your real URLs.
+
 ## Product recommendations
 
 **What you get:** one pick per category (seating, tables, beds, storage, lighting, rugs, curtains, decor) chosen for the room type and style, pre-selected so the planned total stays within the budget, plus unselected alternatives and ideas.

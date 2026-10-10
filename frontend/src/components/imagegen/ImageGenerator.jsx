@@ -88,10 +88,10 @@ export default function ImageGenerator() {
 
   return (
     <section id="image-lab" aria-labelledby="image-lab-heading" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:py-28">
-      <p className="eyebrow">Image Lab</p>
-      <h2 id="image-lab-heading" className="mt-4 font-display text-4xl font-medium leading-none sm:text-5xl lg:text-6xl">Imagine a space.</h2>
+      <p className="eyebrow">Image Lab · optional playground</p>
+      <h2 id="image-lab-heading" className="mt-4 font-display text-4xl font-medium leading-none sm:text-5xl lg:text-6xl">Just for fun.</h2>
       <p className="mb-10 mt-4 max-w-xl text-sm leading-relaxed text-muted sm:text-base">
-        Describe a room and get an AI-generated picture. Add a photo to generate on top of it. Pick Cloudflare or Gemini; either way the image is made by the SpaceSense server.
+        A sandbox, separate from your room plan above: describe any scene and get an AI picture, or add an image to build on. It does not use your room details, and nothing here changes your photo or your advice.
       </p>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -108,8 +108,12 @@ export default function ImageGenerator() {
               <p className="mt-1 text-right text-xs text-muted">{prompt.length} / {MAX_PROMPT}</p>
             </div>
 
-            <fieldset>
-              <legend className="mb-2 text-sm font-semibold">AI provider</legend>
+            <details className="rounded-xl border border-line px-3 py-2 text-sm">
+              <summary className="cursor-pointer font-semibold">
+                Advanced: AI provider <span className="font-normal text-muted">({PROVIDERS.find((p) => p.id === provider)?.name})</span>
+              </summary>
+            <fieldset className="mt-3">
+              <legend className="sr-only">AI provider</legend>
               <div className="grid gap-2 sm:grid-cols-2">
                 {PROVIDERS.map((p) => {
                   const missing = available !== null && !available[p.id]
@@ -132,6 +136,7 @@ export default function ImageGenerator() {
                 })}
               </div>
             </fieldset>
+            </details>
 
             <div>
               <span id="image-upload-label" className="mb-2 block text-sm font-semibold">

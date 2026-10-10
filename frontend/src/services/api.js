@@ -1,4 +1,4 @@
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '')
+export const BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '')
 
 // AI calls can take a while; the product lookup is local and fast.
 const TIMEOUTS = { analyze: 90000, chat: 90000, edit: 150000, products: 15000, studio: 15000, image: 90000 }

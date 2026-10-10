@@ -17,6 +17,7 @@ import RecommendationsPanel from './RecommendationsPanel'
 import RoomAnalysisPanel from './RoomAnalysisPanel'
 import ShareLooks from './ShareLooks'
 import StyleCompare from './StyleCompare'
+import { STUDIO_LINKS } from './studioLinks'
 
 const RoomDesigner = lazy(() => import('../../designer/RoomDesigner'))
 
@@ -78,49 +79,63 @@ export default function ResultsSection({
         <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-sage-dark" />
         Review the recommendations first. Your photo is only edited if you approve. Product prices are retailer listings checked on the date shown; confirm them before you buy.
       </div>
-      <div className="mt-6"><RecommendationsPanel analysis={analysis} /></div>
-      <div className="mt-6"><ChatPanel form={form} photo={photo} recommendations={analysis.recommendations} /></div>
-      <div className="mt-6">
+      <nav aria-label="Studio sections" className="sticky top-16 z-30 -mx-5 mt-4 overflow-x-auto border-b border-line bg-cream/90 px-5 backdrop-blur-md sm:-mx-8 sm:px-8 lg:hidden">
+        <ul className="flex gap-5 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
+          {STUDIO_LINKS.map((l) => (
+            <li key={l.href}><a href={l.href} className="inline-block py-1.5 text-muted hover:text-ink">{l.label}</a></li>
+          ))}
+        </ul>
+      </nav>
+
+      <div id="advice" className="mt-6 scroll-mt-32"><RecommendationsPanel analysis={analysis} /></div>
+      <div id="chat" className="mt-6 scroll-mt-32"><ChatPanel form={form} photo={photo} recommendations={analysis.recommendations} /></div>
+      <div id="photo" className="mt-6 scroll-mt-32">
         <DesignStudio form={form} photo={photo} originalUrl={imageUrl} recommendations={analysis.recommendations} />
       </div>
-      <Card className="mt-6 flex flex-wrap items-center justify-between gap-4">
-        <div className="max-w-xl">
-          <h2 className="font-display text-2xl font-semibold">Build your dream room in 3D</h2>
-          <p className="mt-1 text-sm text-muted">
-            Start from your {form.length} × {form.width} ft room, paint the walls, choose a floor and place every item yourself.
-          </p>
+      <div id="shop" className="mt-6 scroll-mt-32">
+        <FurniturePanel products={products} error={productsError} onRetry={retryProducts} retrying={retrying} />
+      </div>
+      <Card id="designer-3d" className="mt-6 scroll-mt-32">
+        <div className="grid gap-6 md:grid-cols-[1fr_auto] md:items-center">
+          <div className="max-w-xl">
+            <p className="eyebrow">Optional</p>
+            <h2 className="mt-2 font-display text-2xl font-semibold">Plan it in 3D</h2>
+            <p className="mt-1 text-sm text-muted">
+              Start from your {form.length} × {form.width} ft room, paint the walls, choose a floor and place every item yourself.
+            </p>
+            <Button ref={designerButtonRef} className="mt-4" onClick={() => setDesignerOpen(true)}>
+              <Box aria-hidden="true" className="h-4 w-4" /> Open 3D Room Designer
+            </Button>
+          </div>
+          <div className="w-full max-w-[16rem]">
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Room outline</h3>
+            <FloorPlan length={form.length} width={form.width} styleId={form.style} />
+          </div>
         </div>
-        <Button ref={designerButtonRef} onClick={() => setDesignerOpen(true)}>
-          <Box aria-hidden="true" className="h-4 w-4" /> Open 3D Room Designer
-        </Button>
       </Card>
       {designerOpen && (
         <Suspense fallback={<p role="status" className="fixed inset-0 z-[60] flex items-center justify-center bg-cream text-sm text-muted">Loading the 3D designer…</p>}>
           <RoomDesigner form={form} photo={photo} photoUrl={imageUrl} onClose={closeDesigner} />
         </Suspense>
       )}
-      <div className="mt-6">
-        <FurniturePanel products={products} error={productsError} onRetry={retryProducts} retrying={retrying} />
-      </div>
 
-      <div className="mt-10">
-        <h2 className="font-display text-3xl font-semibold">Explore the mood</h2>
-        <p className="mt-1 text-sm text-muted">Inspiration only: these use illustrative style photography, not an edit of your room.</p>
+      <details id="inspiration" className="group mt-8 scroll-mt-32 rounded-2xl border border-line bg-white/60 p-5">
+        <summary className="cursor-pointer list-none">
+          <span className="eyebrow">Inspiration · not your room</span>
+          <span className="mt-2 block font-display text-2xl font-semibold">Explore the mood</span>
+          <span className="mt-1 block text-sm text-muted">Palette, lighting and style comparisons using stock photography. These are ideas to react to, not an edit or a render of your room. Tap to open.</span>
+        </summary>
         <div className="mt-6"><PaletteStrip colors={palette} /></div>
         <div className="mt-6"><MoodLighting mood={mood} lighting={lighting} onMood={setMood} onLighting={setLighting} /></div>
         <div className="mt-6"><BeforeAfter originalUrl={imageUrl} styleId={form.style} mood={mood} lighting={lighting} /></div>
-        <div className="mt-8 grid gap-6 lg:grid-cols-[3fr_2fr]">
+        <div className="mt-8">
           <Card>
             <StyleCompare primary={form.style} compareStyle={compareStyle} onCompare={setCompareStyle} moodClassName={moodClass(mood, lighting)} />
           </Card>
-          <Card>
-            <h3 className="font-display text-xl font-semibold">Room outline</h3>
-            <FloorPlan length={form.length} width={form.width} styleId={form.style} />
-          </Card>
         </div>
-      </div>
+      </details>
 
-      <div className="mt-6"><RoomAnalysisPanel analysis={analysis} /></div>
+      <div id="analysis" className="mt-6 scroll-mt-32"><RoomAnalysisPanel analysis={analysis} /></div>
     </section>
   )
 }

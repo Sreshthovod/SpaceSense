@@ -43,7 +43,7 @@ export default function Hero({ onStart, onOpenDesigner }) {
             <em className="mt-1 block text-[3.1rem] font-light leading-[0.95] text-sage-dark min-[420px]:text-6xl sm:text-7xl lg:text-8xl">Reimagined.</em>
           </h1>
           <p className="mt-6 max-w-md text-[1.05rem] leading-relaxed text-ink/80">
-            Transform your room into a space you love — personalized to your style, your budget, and the way you live.
+            Upload a photo of your room and get clear, written design advice shaped around your style and budget. Edit your photo or try the 3D designer only if you want to.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-4">
             <a
@@ -51,7 +51,7 @@ export default function Hero({ onStart, onOpenDesigner }) {
               onClick={onStart}
               className="group inline-flex min-h-12 items-center gap-3 bg-brass px-8 py-4 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-white transition-colors duration-200 hover:bg-ink"
             >
-              Redesign My Room <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+              Plan My Room <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
             </a>
             <a href="#styles" className="inline-flex min-h-12 items-center gap-1.5 text-sm font-medium underline decoration-ink/40 underline-offset-[6px] transition-colors hover:text-brass hover:decoration-brass">
               Explore design styles <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
@@ -63,9 +63,9 @@ export default function Hero({ onStart, onOpenDesigner }) {
             )}
           </div>
           <p className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.75rem] tracking-[0.1em] text-ink/60">
-            <span>Personalized design</span>
+            <span>Advice first</span>
             <span aria-hidden="true">·</span>
-            <span>Budget-conscious planning</span>
+            <span>Your photo is never edited without approval</span>
           </p>
         </div>
       </div>

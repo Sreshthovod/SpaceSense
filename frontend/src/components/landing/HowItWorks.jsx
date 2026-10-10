@@ -1,7 +1,7 @@
 const steps = [
   { n: 1, title: 'Share your space', text: 'Upload a room photo and enter your room dimensions.' },
   { n: 2, title: 'Make it yours', text: 'Choose your style, budget, and optional Vastu preferences.' },
-  { n: 3, title: 'See the transformation', text: 'Explore a redesigned room and budget-conscious furniture ideas.' },
+  { n: 3, title: 'Get advice, then decide', text: 'Read written recommendations and shop budget-conscious pieces. Your photo is only edited if you approve it.' },
 ]
 
 export default function HowItWorks() {
