@@ -1,0 +1,10 @@
+{
+  "name": "spacesense",
+  "private": true,
+  "scripts": {
+    "server": "cd backend && .venv\\Scripts\\python -m uvicorn main:app --reload --port 8000",
+    "server:unix": "cd backend && .venv/bin/python -m uvicorn main:app --reload --port 8000",
+    "client": "npm --prefix frontend run dev",
+    "dev": "npm --prefix frontend run dev"
+  }
+}

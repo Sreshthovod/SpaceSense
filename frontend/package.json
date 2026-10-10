@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "server": "cd ../backend && .venv\\Scripts\\python -m uvicorn main:app --reload --port 8000",
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
