@@ -89,12 +89,12 @@ describe('catalog', () => {
     render(<RoomDesigner form={form} onClose={() => {}} />)
     const list = () => within(screen.getByRole('list', { name: 'Furniture' })).getAllByRole('button').map((b) => b.getAttribute('aria-label'))
     fireEvent.change(screen.getByLabelText('Search furniture'), { target: { value: 'LAMP' } })
-    expect(list()).toEqual(['Add floor lamp', 'Add table lamp'])
+    expect(list()).toEqual(['Add floor lamp', 'Add table lamp', 'Add work lamp'])
     fireEvent.change(screen.getByLabelText('Search furniture'), { target: { value: 'spaceship' } })
     expect(screen.getByText(/No furniture matches “spaceship”/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /Clear filters/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Beds' }))
-    expect(list()).toEqual(['Add queen bed', 'Add bunk bed'])
+    expect(list()).toEqual(['Add queen bed', 'Add bunk bed', 'Add single bed'])
   })
 
   it('a mouse click starts a placement preview; clicking the floor places it; Esc cancels', () => {

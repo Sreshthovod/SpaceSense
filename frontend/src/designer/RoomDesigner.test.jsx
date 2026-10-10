@@ -157,7 +157,7 @@ describe('RoomDesigner', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Budget: / }))
     await vi.waitFor(() => expect(screen.getByTestId('budget-meter').textContent).toBe('₹50,990 · ₹25,990 over budget'), { timeout: 2000 })
     const last = api.payloads.at(-1)
-    expect(last.items).toEqual([{ uid: expect.any(String), type: 'sofa', product_id: 'ikea-kivik-sofa' }])
+    expect(last.items).toEqual([{ uid: expect.any(String), type: 'sofa', product_id: 'ikea-kivik-sofa', label: 'Three-seater sofa' }])
     expect(JSON.stringify(last)).not.toMatch(/price/)
 
     // Clicking the cost row selects the sofa and asks the camera to focus on it.

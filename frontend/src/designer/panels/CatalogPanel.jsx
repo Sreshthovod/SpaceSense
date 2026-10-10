@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  Armchair, BedDouble, Flower2, Lamp, Layers, Library, Search, Sofa, Table, X,
+  Armchair, BedDouble, CookingPot, Flower2, Lamp, Layers, Library, Search, Sofa, Table, X,
 } from 'lucide-react'
 import { formatINR } from '../../utils/format'
 import { safeHttpsUrl } from '../../utils/productPlan'
@@ -8,7 +8,7 @@ import { FLOOR_CATEGORIES, FLOOR_ITEMS } from '../model/catalog'
 import { lowestPrice, searchCatalog } from '../model/catalogSearch'
 import { formatFeet } from '../model/wallPlacement'
 
-const ICONS = { 'sofas-chairs': Sofa, tables: Table, beds: BedDouble, storage: Library, rugs: Layers, plants: Flower2, lamps: Lamp, decor: Armchair }
+const ICONS = { 'sofas-chairs': Sofa, tables: Table, beds: BedDouble, storage: Library, rugs: Layers, plants: Flower2, lamps: Lamp, decor: Armchair, kitchen: CookingPot }
 const sizeLabel = ({ w, d, h }) => (h < 1 / 12 ? `${formatFeet(w)} × ${formatFeet(d)}` : `${formatFeet(w)} × ${formatFeet(d)} × ${formatFeet(h)}`)
 
 function Thumb({ id, catalog }) {

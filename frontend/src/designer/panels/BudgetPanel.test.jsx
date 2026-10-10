@@ -87,7 +87,7 @@ describe('pricingPayload', () => {
     expect(payload).toEqual({
       budget_inr: 30000,
       style: 'boho',
-      items: [{ uid: 's', type: 'sofa', product_id: 'ikea-kivik-sofa' }, { uid: 'p', type: 'plant' }],
+      items: [{ uid: 's', type: 'sofa', product_id: 'ikea-kivik-sofa', label: 'Three-seater sofa' }, { uid: 'p', type: 'plant', label: 'Floor plant' }],
       surfaces: [{ id: 'walls', label: 'Walls: Warm white' }, { id: 'floor', label: 'Flooring: Light wood' }],
     })
     // Moving an item doesn't change the request, so it doesn't re-price.

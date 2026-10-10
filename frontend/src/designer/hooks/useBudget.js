@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { priceDesign } from '../../services/api'
 import { FLOOR_MATERIALS, PAINTS } from '../model/design'
+import { itemSpec } from '../model/catalog'
 
 export const PRICE_DEBOUNCE_MS = 400
 
@@ -15,7 +16,8 @@ export function pricingPayload(design) {
       uid: i.uid,
       type: i.catalogId,
       ...(i.productId ? { product_id: i.productId } : {}),
-      ...(i.label ? { label: i.label } : {}),
+      // The user's own name, else the catalog name ("TV unit"), for the budget list.
+      label: (i.label || itemSpec(i.catalogId)?.name || i.catalogId).slice(0, 80),
     })),
     surfaces: [
       { id: 'walls', label: `Walls: ${wallNames.join(', ')}`.slice(0, 80) },

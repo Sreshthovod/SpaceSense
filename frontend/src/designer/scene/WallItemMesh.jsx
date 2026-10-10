@@ -66,6 +66,40 @@ function Parts({ catalogId, w, h, d, color }) {
         </>
       )
     }
+    case 'wall-cabinet': {
+      // One or two doors, with small pulls near the bottom edge.
+      const doors = w > 1.5 ? 2 : 1
+      return (
+        <>
+          <Part position={[0, 0, d / 2]} scale={[w, h, d]} mat={material(color, { roughness: 0.4 })} />
+          {doors === 2 && <Part position={[0, 0, d + 0.005]} scale={[0.02, h - 0.1, 0.01]} mat={material('#9a9a94')} />}
+          {Array.from({ length: doors }, (_, i) => (
+            <Part key={i} position={[doors === 2 ? (i ? 0.15 : -0.15) : w / 2 - 0.2, -h / 2 + 0.25, d + 0.03]} scale={[0.04, 0.3, 0.04]} mat={material('#5c5f55', { metalness: 0.5, roughness: 0.4 })} />
+          ))}
+        </>
+      )
+    }
+    case 'range-hood': {
+      const steel = material(color, { metalness: 0.3, roughness: 0.4 })
+      return (
+        <>
+          <Part position={[0, h * 0.2, 0.45]} scale={[w * 0.36, h * 0.6, 0.9]} mat={steel} />
+          <Part position={[0, -h / 2 + 0.2, d / 2]} scale={[w, 0.4, d]} mat={steel} />
+          <Part position={[0, -h / 2 + 0.01, d / 2]} scale={[w * 0.9, 0.02, d * 0.85]} mat={material('#3b3f3a')} />
+        </>
+      )
+    }
+    case 'spice-rack':
+      return (
+        <>
+          {[-1, 1].map((side) => <Part key={side} position={[side * (w / 2 - 0.03), 0, d / 2]} scale={[0.06, h, d]} mat={material(color)} />)}
+          <Part position={[0, -h * 0.05, d / 2]} scale={[w, 0.05, d]} mat={material(color)} />
+          <Part position={[0, -h * 0.05 + 0.2, d - 0.02]} scale={[w, 0.05, 0.03]} mat={material(color)} />
+          {[-0.4, -0.15, 0.1, 0.35].map((t) => (
+            <Part key={t} geometry={cylinder} position={[t * w, -h * 0.05 + 0.18, d / 2]} rotation={[Math.PI / 2, 0, 0]} scale={[0.14, 0.14, 0.3]} mat={material('#a65f3c')} />
+          ))}
+        </>
+      )
     case 'door':
       return (
         <>

@@ -60,6 +60,30 @@ export default function WallShape({ catalogId, w, h, color }) {
         </>
       )
     }
+    case 'wall-cabinet':
+      return (
+        <>
+          <rect x={x} y={y} width={w} height={h} fill={color} stroke="#9a9a94" strokeWidth="0.04" />
+          {w > 1.5 && <path d={`M0 ${y + 0.06} V${-y - 0.06}`} stroke="#9a9a94" strokeWidth="0.03" />}
+          <path d={`M${w > 1.5 ? -0.12 : -x - 0.15} ${-y - 0.35} v0.25${w > 1.5 ? ' M0.12 ' + (-y - 0.35) + ' v0.25' : ''}`} stroke="#5c5f55" strokeWidth="0.05" strokeLinecap="round" />
+        </>
+      )
+    case 'range-hood':
+      return (
+        <>
+          <rect x={-w * 0.18} y={y} width={w * 0.36} height={h * 0.6} fill={color} />
+          <path d={`M${-w * 0.18} ${y + h * 0.6} L${-w * 0.18} ${y + h * 0.6} L${x} ${-y - 0.15} L${-x} ${-y - 0.15} L${w * 0.18} ${y + h * 0.6} Z`} fill={color} stroke="#8a8d90" strokeWidth="0.03" />
+          <rect x={x} y={-y - 0.15} width={w} height="0.15" fill="#8a8d90" />
+        </>
+      )
+    case 'spice-rack':
+      return (
+        <>
+          <rect x={x} y={y} width={w} height={h} fill="none" stroke={color} strokeWidth="0.06" />
+          <rect x={x} y={y + h * 0.55} width={w} height="0.06" fill={color} />
+          {[-0.4, -0.15, 0.1, 0.35].map((t) => <rect key={t} x={t * w - 0.07} y={y + h * 0.55 - 0.3} width="0.14" height="0.3" fill="#a65f3c" />)}
+        </>
+      )
     case 'door':
       return (
         <>

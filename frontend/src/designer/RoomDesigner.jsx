@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  ArrowLeft, Box, ChevronLeft, ChevronRight, History, Home, LibraryBig, MousePointerClick, PaintRoller, Redo2, Sofa, SquareDashed,
+  ArrowLeft, Box, ChevronLeft, ChevronRight, History, Home, LayoutTemplate, LibraryBig, MousePointerClick, PaintRoller, Redo2, Sofa, SquareDashed,
   TriangleAlert, Undo2, X,
 } from 'lucide-react'
 import { STYLES } from '../data/sampleData'
@@ -30,6 +30,7 @@ import useTips from './hooks/useTips'
 import { FloorFinishPanel, WallFinishPanel } from './panels/FinishPanels'
 import useGestureSetting from './hooks/useGestureSetting'
 import RoomSettings from './panels/RoomSettings'
+import TemplatePanel from './panels/TemplatePanel'
 import WallPanel from './panels/WallPanel'
 import WallEditor from './wall/WallEditor'
 import DesignerScene from './scene/DesignerScene'
@@ -216,6 +217,13 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
     setSelected(null)
     setActiveWall(null)
   }
+  // A template or an empty room replaces the design; the old one can be undone or restored.
+  const applyTemplate = (next) => {
+    try { saveLastCleared(design) } catch { /* undo still brings it back */ }
+    dispatch({ type: 'replaceDesign', design: next })
+    setSelected(null)
+    setActiveWall(null)
+  }
   const recover = () => {
     dispatch({ type: 'replaceDesign', design: draft.design })
     clearHistory()
@@ -252,6 +260,13 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
       label: 'Furniture',
       icon: Sofa,
       content: (
+        <>
+        {design.items.length + design.openings.length === 0 && (
+          <button type="button" onClick={() => setTab('room')} className="mb-3 flex w-full items-center gap-2 rounded-xl border border-dashed border-sage bg-sage/5 px-3 py-2 text-left text-xs hover:bg-sage/10">
+            <LayoutTemplate aria-hidden="true" className="h-4 w-4 shrink-0 text-sage-dark" />
+            <span><span className="font-semibold">Empty room.</span> Add pieces below, or start from a room template.</span>
+          </button>
+        )}
         <CatalogPanel
           catalog={catalog}
           recent={recent}
@@ -259,6 +274,7 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
           placingName={placing ? floorItemSpec(placing.catalogId)?.name.toLowerCase() : null}
           onCancelPlacing={cancelPlacing}
         />
+        </>
       ),
     },
     {
@@ -306,6 +322,7 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
       icon: Home,
       content: (
         <div className="space-y-5">
+          <TemplatePanel design={design} roomType={form.roomType} onApply={applyTemplate} onDialog={onDialog} />
           <ObjectList design={design} selected={selected} onSelect={closeDrawerOnPick((item) => (item.wall ? selectItem(item) : focusItem(item.uid)))} dispatch={dispatch} />
           <RoomSettings design={design} dispatch={dispatch} photoUrl={photo && design.photo?.name === photo.name ? photoUrl : null} />
         </div>

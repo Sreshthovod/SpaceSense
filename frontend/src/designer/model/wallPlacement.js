@@ -113,6 +113,9 @@ const gap = (a, b) => {
   return { dx, dy, overlap: dx < -1e-6 && dy < -1e-6 }
 }
 
+// Kitchen units are meant to sit edge to edge, so touching isn't "cramped" for them.
+const FITTED = new Set(['wall-cabinet', 'range-hood'])
+
 /** Overlaps and cramped spacing between items on one wall. */
 export function wallWarnings(items) {
   const warnings = []
@@ -124,7 +127,7 @@ export function wallWarnings(items) {
       const names = [wallItemSpec(a.catalogId)?.name, wallItemSpec(b.catalogId)?.name]
       const ids = [a.uid, b.uid]
       if (overlap) warnings.push({ kind: 'overlap', ids, message: `${names[0]} overlaps ${names[1].toLowerCase()}.` })
-      else if (Math.max(dx, dy) < MIN_GAP) warnings.push({ kind: 'tight', ids, message: `${names[0]} and ${names[1].toLowerCase()} are less than 3 inches apart.` })
+      else if (Math.max(dx, dy) < MIN_GAP && !(FITTED.has(a.catalogId) && FITTED.has(b.catalogId))) warnings.push({ kind: 'tight', ids, message: `${names[0]} and ${names[1].toLowerCase()} are less than 3 inches apart.` })
     }
   }
   return warnings

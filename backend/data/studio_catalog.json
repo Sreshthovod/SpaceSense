@@ -1,5 +1,5 @@
 {
-  "budget_categories": {"furniture": "Furniture", "lighting": "Lighting", "accessories": "Accessories", "wall_finishes": "Wall finishes", "flooring": "Flooring"},
+  "budget_categories": {"furniture": "Furniture", "lighting": "Lighting", "accessories": "Accessories", "wall_finishes": "Wall finishes", "flooring": "Flooring", "appliances": "Appliances"},
   "types": {
     "sofa": {"category": "furniture", "products": ["ikea-klippan-sofa", "ikea-glostad-sofa", "ikea-kivik-sofa", "ikea-friheten-sofa-bed"]},
     "armchair": {"category": "furniture", "products": ["ikea-poang-armchair", "ikea-strandmon-chair"]},
@@ -29,6 +29,27 @@
     "small-plant": {"category": "accessories", "products": ["ikea-fejka-plant"]},
     "table-lamp": {"category": "lighting", "products": ["ikea-arstid-table-lamp"]},
     "vase": {"category": "accessories", "products": []},
-    "clock": {"category": "accessories", "products": []}
+    "clock": {"category": "accessories", "products": []},
+    "l-sofa": {"category": "furniture", "products": []},
+    "bean-bag": {"category": "furniture", "products": []},
+    "shoe-cabinet": {"category": "furniture", "products": ["ikea-bissa-shoe-cabinet"]},
+    "sideboard": {"category": "furniture", "products": []},
+    "single-bed": {"category": "furniture", "products": []},
+    "dressing-table": {"category": "furniture", "products": []},
+    "filing-cabinet": {"category": "furniture", "products": []},
+    "work-lamp": {"category": "lighting", "products": ["ikea-tertial-lamp"]},
+    "toy-storage": {"category": "furniture", "products": []},
+    "base-cabinet": {"category": "furniture", "products": []},
+    "sink-cabinet": {"category": "furniture", "products": []},
+    "corner-cabinet": {"category": "furniture", "products": []},
+    "tall-cabinet": {"category": "furniture", "products": []},
+    "stove": {"category": "appliances", "products": []},
+    "fridge": {"category": "appliances", "products": []},
+    "kitchen-island": {"category": "furniture", "products": []},
+    "bar-stool": {"category": "furniture", "products": ["ikea-dalfred-stool"]},
+    "kitchen-trolley": {"category": "furniture", "products": ["ikea-kungsfors-trolley"]},
+    "wall-cabinet": {"category": "furniture", "products": []},
+    "range-hood": {"category": "appliances", "products": []},
+    "spice-rack": {"category": "accessories", "products": ["ikea-bekvam-spice-rack"]}
   }
 }

@@ -36,6 +36,11 @@ TYPE_RULES = {
     "painting": ("decor", r"frame"),
     "mirror": ("decor", r"mirror"),
     "curtains": ("curtains", r"curtain"),
+    "bar-stool": ("seating", r"bar stool"),
+    "kitchen-trolley": ("storage", r"kitchen trolley"),
+    "spice-rack": ("storage", r"spice rack"),
+    "work-lamp": ("lighting", r"work lamp"),
+    "shoe-cabinet": ("storage", r"shoe cabinet"),
 }
 
 

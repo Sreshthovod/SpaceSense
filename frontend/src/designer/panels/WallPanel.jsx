@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { AppWindow, DoorOpen, Frame, Lamp, Plus, Rows3, Circle, PanelsTopLeft } from 'lucide-react'
 import { WALL_LABELS, findPlaced, roomSize, wallDims } from '../model/design'
-import { OPENING_IDS, WALL_DECOR_IDS, WALL_ITEMS } from '../model/catalog'
+import { OPENING_IDS, WALL_DECOR_IDS, WALL_ITEMS, WALL_KITCHEN_IDS } from '../model/catalog'
 import { formatFeet, halfExtents, measurements } from '../model/wallPlacement'
 import { priceHint } from '../hooks/useStudioCatalog'
 import ProductPicker from './ProductPicker'
@@ -106,6 +106,7 @@ export default function WallPanel({ design, wallId, selected, dispatch, onAdd, c
         <p className="rounded-xl border border-dashed border-line p-3 text-xs text-muted">Select an item on the wall to set its exact position and size.</p>
       )}
       <AddButtons title="Wall décor" ids={WALL_DECOR_IDS} onAdd={onAdd} catalog={catalog} />
+      <AddButtons title="Kitchen" ids={WALL_KITCHEN_IDS} onAdd={onAdd} catalog={catalog} />
       <AddButtons title="Doors and windows" ids={OPENING_IDS} onAdd={onAdd} />
       <section aria-labelledby="this-wall-finish" className="space-y-2 border-t border-line pt-4">
         <h4 id="this-wall-finish" className="text-sm font-semibold">This wall's finish</h4>
