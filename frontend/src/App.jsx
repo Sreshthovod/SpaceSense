@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react'
 import Navbar from './components/layout/Navbar'
 import Footer from './components/layout/Footer'
-import Hero from './components/Hero'
-import HowItWorks from './components/HowItWorks'
+import Hero from './components/landing/Hero'
+import BeforeAfter from './components/landing/BeforeAfter'
+import HowItWorks from './components/landing/HowItWorks'
+import DesignStyles from './components/landing/DesignStyles'
+import BudgetFirst from './components/landing/BudgetFirst'
+import FinalCTA from './components/landing/FinalCTA'
+import useReveal from './hooks/useReveal'
 import RoomForm from './components/form/RoomForm'
 import ResultsSection from './components/results/ResultsSection'
 
@@ -16,6 +21,15 @@ export default function App() {
 
   // Revoke object URLs when replaced or on unmount.
   useEffect(() => () => { if (image.url) URL.revokeObjectURL(image.url) }, [image.url])
+
+  useReveal(showResults)
+
+  const leaveResults = () => setShowResults(false)
+
+  const selectStyle = (id) => {
+    setForm((f) => ({ ...f, style: id }))
+    document.getElementById('redesign')?.scrollIntoView({ behavior: 'smooth' })
+  }
 
   const setImage = (file) => setImageState({ file, url: file ? URL.createObjectURL(file) : '' })
 
@@ -32,23 +46,28 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Navbar onHome={() => showResults && setShowResults(false)} />
+      <Navbar onHome={leaveResults} />
       <main className="flex-1">
         {showResults ? (
           <ResultsSection form={form} imageUrl={image.url} onReset={reset} />
         ) : (
           <>
             <Hero />
+            <BeforeAfter />
             <HowItWorks />
-            <section id="redesign" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-              <h2 className="font-display text-3xl font-semibold">Tell us about your room</h2>
-              <p className="mb-8 mt-2 text-muted">All fields except Vastu are required. Nothing is uploaded anywhere; your photo stays in your browser.</p>
+            <DesignStyles onSelectStyle={selectStyle} />
+            <BudgetFirst />
+            <FinalCTA onStart={leaveResults} />
+            <section id="redesign" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:py-28">
+              <p className="eyebrow">Design My Space</p>
+              <h2 className="mt-4 font-display text-5xl font-medium leading-none sm:text-6xl">Tell us about your room.</h2>
+              <p className="mb-10 mt-4 max-w-xl text-muted">All fields except Vastu are required. Your photo stays in your browser; nothing is uploaded anywhere yet.</p>
               <RoomForm form={form} setForm={setForm} image={image} setImage={setImage} onSubmit={submit} submitting={submitting} />
             </section>
           </>
         )}
       </main>
-      <Footer />
+      <Footer onHome={leaveResults} />
     </div>
   )
 }

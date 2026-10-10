@@ -1,43 +1,63 @@
-import { useState } from 'react'
-import { Menu, Sofa, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Home, Menu, X } from 'lucide-react'
 
 const links = [
-  { href: '#how-it-works', label: 'How it works' },
-  { href: '#redesign', label: 'Start redesign' },
+  { href: '#how-it-works', label: 'How It Works' },
+  { href: '#styles', label: 'Design Styles' },
+  { href: '#about', label: 'About' },
 ]
 
 export default function Navbar({ onHome }) {
   const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e) => e.key === 'Escape' && setOpen(false)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+
+  const go = () => { setOpen(false); onHome?.() }
+
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-cream/90 backdrop-blur">
-      <nav aria-label="Main" className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <a href="#top" onClick={onHome} className="flex items-center gap-2 font-display text-xl font-semibold">
-          <Sofa aria-hidden="true" className="h-6 w-6 text-sage" /> SpaceSense
+    <header className="sticky top-0 z-40 border-b border-line bg-cream/95 backdrop-blur-sm">
+      <nav aria-label="Main" className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
+        <a href="#top" onClick={go} className="flex items-center gap-2.5">
+          <Home aria-hidden="true" strokeWidth={1.5} className="h-5 w-5 text-sage-dark" />
+          <span className="font-display text-2xl font-semibold tracking-tight">SpaceSense</span>
         </a>
-        <ul className="hidden items-center gap-6 text-sm font-medium sm:flex">
+        <ul className="hidden items-center gap-9 text-sm md:flex">
           {links.map((l) => (
-            <li key={l.href}><a href={l.href} onClick={onHome} className="text-muted hover:text-ink">{l.label}</a></li>
+            <li key={l.href}>
+              <a href={l.href} onClick={go} className="text-muted underline-offset-8 transition-colors hover:text-ink hover:underline">{l.label}</a>
+            </li>
           ))}
         </ul>
+        <a href="#redesign" onClick={go} className="hidden bg-ink px-5 py-2.5 text-sm font-medium text-cream transition-colors hover:bg-sage-dark md:inline-block">
+          Design My Space
+        </a>
         <button
           type="button"
-          className="rounded-lg p-2 hover:bg-sand sm:hidden"
+          className="p-2 md:hidden"
           aria-expanded={open}
           aria-controls="mobile-menu"
           aria-label={open ? 'Close menu' : 'Open menu'}
           onClick={() => setOpen((o) => !o)}
         >
-          {open ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+          {open ? <X aria-hidden="true" strokeWidth={1.5} /> : <Menu aria-hidden="true" strokeWidth={1.5} />}
         </button>
       </nav>
       {open && (
-        <ul id="mobile-menu" className="border-t border-line px-4 pb-3 sm:hidden">
-          {links.map((l) => (
-            <li key={l.href}>
-              <a href={l.href} className="block py-3 text-sm font-medium" onClick={() => { setOpen(false); onHome?.() }}>{l.label}</a>
-            </li>
-          ))}
-        </ul>
+        <div id="mobile-menu" className="border-t border-line bg-cream px-5 pb-6 pt-2 md:hidden">
+          <ul>
+            {links.map((l) => (
+              <li key={l.href} className="border-b border-line">
+                <a href={l.href} onClick={go} className="block py-4 font-display text-2xl">{l.label}</a>
+              </li>
+            ))}
+          </ul>
+          <a href="#redesign" onClick={go} className="mt-6 block bg-ink px-5 py-3 text-center text-sm font-medium text-cream">Design My Space</a>
+        </div>
       )}
     </header>
   )
