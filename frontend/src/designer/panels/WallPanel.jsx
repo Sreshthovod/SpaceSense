@@ -118,7 +118,7 @@ export default function WallPanel({ design, wallId, selected, dispatch, onAdd, c
             </label>
           ))}
           <label className="ml-1 flex items-center gap-1.5 text-xs text-muted">
-            <input type="color" value={color} onChange={(e) => dispatch({ type: 'setWallColor', wall: wallId, color: e.target.value })} className="h-7 w-7 cursor-pointer rounded border border-line bg-white p-0.5" />
+            <input type="color" value={color} onChange={(e) => dispatch({ type: 'setWallColor', wall: wallId, color: e.target.value, coalesce: `paint:${wallId}` })} className="h-7 w-7 cursor-pointer rounded border border-line bg-white p-0.5" />
             Custom
           </label>
         </div>

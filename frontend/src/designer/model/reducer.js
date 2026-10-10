@@ -71,7 +71,7 @@ export function designReducer(design, action) {
     }
     case 'updatePlaced': {
       const found = findPlaced(design, action.uid)
-      if (!found) return design
+      if (!found || found.item.locked) return design // locked items can't be moved by accident
       const allowed = found.item.wall ? ['x', 'y', 'w', 'h', 'rotation'] : ['x', 'z', 'rotation', 'scale']
       const changes = Object.fromEntries(
         Object.entries(action.changes || {}).filter(([k, v]) => allowed.includes(k) && Number.isFinite(v)),
@@ -88,12 +88,12 @@ export function designReducer(design, action) {
       const offset = item.wall
         ? { x: item.x + DUPLICATE_OFFSET, y: item.y - DUPLICATE_OFFSET }
         : { x: item.x + DUPLICATE_OFFSET * 2, z: item.z + DUPLICATE_OFFSET * 2 }
-      const copy = clampPlaced({ ...item, ...offset, uid: action.newUid }, roomSize(design))
+      const copy = clampPlaced({ ...item, ...offset, uid: action.newUid, locked: false }, roomSize(design))
       return { ...design, [found.key]: [...design[found.key], copy] }
     }
     case 'removePlaced': {
       const found = findPlaced(design, action.uid)
-      if (!found) return design
+      if (!found || found.item.locked) return design
       return { ...design, [found.key]: design[found.key].filter((i) => i.uid !== action.uid) }
     }
     case 'setProduct': {
@@ -101,7 +101,7 @@ export function designReducer(design, action) {
       // this item type before pricing it; null means a generic shape with no price.
       const found = findPlaced(design, action.uid)
       const productId = action.productId ?? null
-      if (!found || (productId !== null && (typeof productId !== 'string' || !productId))) return design
+      if (!found || found.item.locked || (productId !== null && (typeof productId !== 'string' || !productId))) return design
       if (found.item.productId === productId) return design
       return { ...design, [found.key]: replaceAt(design[found.key], found.index, { ...found.item, productId }) }
     }
@@ -114,6 +114,20 @@ export function designReducer(design, action) {
     case 'setStyle': {
       if (!STYLES.some((s) => s.id === action.style) || action.style === design.style) return design
       return { ...design, style: action.style }
+    }
+    case 'replaceDesign': {
+      // Load, reset or recover: the new design must already be validated. Undoable like any edit.
+      return action.design && action.design !== design ? action.design : design
+    }
+    case 'setItemFlags': {
+      const found = findPlaced(design, action.uid)
+      if (!found) return design
+      const changes = {}
+      if (action.label !== undefined) changes.label = typeof action.label === 'string' && action.label.trim() ? action.label.trim().slice(0, 80) : null
+      if (typeof action.hidden === 'boolean') changes.hidden = action.hidden
+      if (typeof action.locked === 'boolean') changes.locked = action.locked
+      if (Object.entries(changes).every(([k, v]) => found.item[k] === v)) return design
+      return { ...design, [found.key]: replaceAt(design[found.key], found.index, { ...found.item, ...changes }) }
     }
     case 'resetWall': {
       const { wall } = action

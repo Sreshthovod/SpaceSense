@@ -105,7 +105,7 @@ export default function RoomSettings({ design, dispatch, photoUrl }) {
             key={key}
             id={key}
             dim={room[key]}
-            onValue={(value) => dispatch({ type: 'setDimension', key, value })}
+            onValue={(value) => dispatch({ type: 'setDimension', key, value, coalesce: `dim:${key}` })}
             onSource={(source) => dispatch({ type: 'setDimensionSource', key, source })}
           />
         ))}
@@ -122,7 +122,7 @@ export default function RoomSettings({ design, dispatch, photoUrl }) {
           name="wall-paint"
           value={walls.back.color}
           options={PAINTS}
-          onPick={(color) => dispatch({ type: 'setWallColor', wall: 'all', color })}
+          onPick={(color) => dispatch({ type: 'setWallColor', wall: 'all', color, coalesce: 'paint:all' })}
         />
         <fieldset>
           <legend className="mb-2 text-sm font-semibold">Floor</legend>
@@ -135,12 +135,17 @@ export default function RoomSettings({ design, dispatch, photoUrl }) {
             ))}
           </div>
           <label className="mt-2 flex items-center gap-1.5 text-xs text-muted">
-            <input type="color" value={floor.color} onChange={(e) => dispatch({ type: 'setFloor', color: e.target.value })} className="h-8 w-8 cursor-pointer rounded border border-line bg-white p-0.5" />
+            <input type="color" value={floor.color} onChange={(e) => dispatch({ type: 'setFloor', color: e.target.value, coalesce: 'floor-colour' })} className="h-8 w-8 cursor-pointer rounded border border-line bg-white p-0.5" />
             Floor colour
           </label>
         </fieldset>
       </section>
 
+      {!photoUrl && design.photo && (
+        <p className="border-t border-line pt-5 text-xs text-muted">
+          This design was made with your photo “{design.photo.name}”. Photos aren't stored with saved designs, so it isn't shown here.
+        </p>
+      )}
       {photoUrl && (
         <section aria-labelledby="photo-ref-heading" className="border-t border-line pt-5">
           <h3 id="photo-ref-heading" className="font-display text-xl font-semibold">Your photo</h3>

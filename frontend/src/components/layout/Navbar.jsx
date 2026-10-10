@@ -9,7 +9,7 @@ const links = [
   { href: '#about', id: 'about', label: 'About' },
 ]
 
-export default function Navbar({ onHome, studio }) {
+export default function Navbar({ onHome, studio, onOpenDesigner }) {
   const [open, setOpen] = useState(false)
   const menuButtonRef = useRef(null)
   const compact = useNavCompact()
@@ -53,6 +53,13 @@ export default function Navbar({ onHome, studio }) {
                 </a>
               </li>
             ))}
+            {onOpenDesigner && (
+              <li>
+                <button type="button" onClick={onOpenDesigner} className="rounded-sm uppercase tracking-[0.14em] text-muted underline-offset-8 transition-colors hover:text-ink hover:underline">
+                  3D Designer
+                </button>
+              </li>
+            )}
           </ul>
         )}
         {studio ? (
@@ -83,6 +90,11 @@ export default function Navbar({ onHome, studio }) {
               </li>
             ))}
           </ul>
+          {onOpenDesigner && (
+            <button type="button" onClick={() => { setOpen(false); onOpenDesigner() }} className="block w-full border-b border-line py-4 text-left font-display text-2xl">
+              3D Designer
+            </button>
+          )}
           <a href="#redesign" onClick={go} className="mt-6 block bg-ink px-5 py-3 text-center text-sm font-medium text-cream">Design My Space</a>
         </div>
       )}

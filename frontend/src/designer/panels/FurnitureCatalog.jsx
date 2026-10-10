@@ -5,7 +5,8 @@ import { formatFeet } from '../model/wallPlacement'
 import { priceHint } from '../hooks/useStudioCatalog'
 import ProductPicker from './ProductPicker'
 
-const sizeLabel = ({ w, d, h }) => `${formatFeet(w)} × ${formatFeet(d)} × ${formatFeet(h)}`
+// Flat items (rugs) are shown as width × depth only.
+const sizeLabel = ({ w, d, h }) => (h < 1 / 12 ? `${formatFeet(w)} × ${formatFeet(d)}` : `${formatFeet(w)} × ${formatFeet(d)} × ${formatFeet(h)}`)
 
 /** Floor furniture, grouped by category. Every button adds one item to a free spot. */
 export function FurnitureCatalog({ onAdd, catalog }) {
@@ -80,7 +81,7 @@ export function FurnitureInspector({ item, dispatch, onDuplicate, onDelete, onDe
             max={spec.scale[1] * 100}
             step="5"
             value={Math.round(item.scale * 100)}
-            onChange={(e) => dispatch({ type: 'updatePlaced', uid: item.uid, changes: { scale: Number(e.target.value) / 100 } })}
+            onChange={(e) => dispatch({ type: 'updatePlaced', uid: item.uid, changes: { scale: Number(e.target.value) / 100 }, coalesce: `scale:${item.uid}` })}
             className="mt-1 w-full accent-sage-dark"
           />
         </label>
