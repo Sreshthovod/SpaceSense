@@ -4,3 +4,5 @@ pydantic==2.14.0
 python-multipart==0.0.32
 python-dotenv==1.2.4
 google-genai==2.29.0
+opencv-python-headless==5.0.0.93
+numpy==2.5.3

@@ -3,6 +3,7 @@ import Card from '../ui/Card'
 const label = (s) => s.charAt(0).toUpperCase() + s.slice(1)
 
 export default function RoomAnalysisPanel({ analysis }) {
+  const insights = analysis.photo_insights
   const stats = [
     ['Floor area', `${analysis.area_sqft.toLocaleString('en-IN')} sq ft`],
     ['Room size', label(analysis.size_category)],
@@ -22,6 +23,20 @@ export default function RoomAnalysisPanel({ analysis }) {
       <ul className="mt-4 list-disc space-y-1 pl-5 text-sm">
         {analysis.style_notes.map((n) => <li key={n}>{n}</li>)}
       </ul>
+      {insights && (
+        <div className="mt-4 rounded-xl border border-line p-3 text-sm">
+          <p className="font-semibold">Measured from your photo</p>
+          <div className="mt-2 flex items-center gap-2">
+            {insights.dominant_colors.map((c) => (
+              <span key={c} title={c} role="img" aria-label={`Colour ${c}`} className="h-6 w-6 rounded-full border border-line" style={{ backgroundColor: c }} />
+            ))}
+            <span className="ml-1 text-xs text-muted">Dominant colours · {insights.brightness} lighting</span>
+          </div>
+          {insights.issues.length > 0 && (
+            <ul className="mt-3 list-disc space-y-1 pl-5 text-clay">{insights.issues.map((n) => <li key={n}>{n}</li>)}</ul>
+          )}
+        </div>
+      )}
       {analysis.vastu_notes.length > 0 && (
         <div className="mt-4 rounded-xl bg-sand p-3 text-sm">
           <p className="font-semibold">Vastu notes</p>

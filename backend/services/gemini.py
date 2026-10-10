@@ -10,6 +10,7 @@ from pydantic import ValidationError
 
 from schemas import ChatRequest, DesignRecommendations, EditInstructions, RoomRequest
 from services.images import RoomImage
+from services.vastu import describe_for_prompt as vastu_prompt
 
 logger = logging.getLogger("spacesense.gemini")
 
@@ -55,12 +56,12 @@ _LIST = {"type": "array", "items": {"type": "string"}}
 ANALYSIS_SCHEMA = {
     "type": "object",
     "properties": {"summary": {"type": "string"}, **{k: _LIST for k in
-                   ("layout", "keep", "replace", "colors", "lighting", "decor", "budget_tips")}},
+                   ("layout", "keep", "replace", "colors", "lighting", "decor", "budget_tips", "vastu")}},
     "required": ["summary", "layout", "keep", "replace", "colors", "lighting", "decor", "budget_tips"],
 }
 
-def build_analysis_prompt(req: RoomRequest, metrics: dict) -> str:
-    vastu = "The user wants Vastu-aware placement advice." if req.vastu else "Do not give Vastu advice."
+def build_analysis_prompt(req: RoomRequest, metrics: dict, photo_facts: str = "") -> str:
+    vastu = vastu_prompt(req)
     return (
         f"You are an interior design consultant. Study the attached photo of the user's {req.room_type}. "
         f"The user is planning this space as a {req.room_type}; treat it as one even if it currently looks "
@@ -77,16 +78,18 @@ def build_analysis_prompt(req: RoomRequest, metrics: dict) -> str:
         "- lighting: lighting improvements\n"
         "- decor: decor and soft-furnishing suggestions\n"
         "- budget_tips: how to prioritise spending within the budget\n"
+        "- vastu: only if the user wants Vastu advice, otherwise an empty list\n"
         "Do not invent brands, prices or product links. Do not change walls, doors or windows unless essential."
+        + ("\n" + photo_facts if photo_facts else "")
     )
 
 
-def analyze_with_gemini(client, model: str, req: RoomRequest, image: RoomImage, metrics: dict) -> DesignRecommendations:
+def analyze_with_gemini(client, model: str, req: RoomRequest, image: RoomImage, metrics: dict, photo_facts: str = "") -> DesignRecommendations:
     types = _types()
     response = _call(
         client,
         model=model,
-        contents=[types.Part.from_bytes(data=image.data, mime_type=image.mime_type), build_analysis_prompt(req, metrics)],
+        contents=[types.Part.from_bytes(data=image.data, mime_type=image.mime_type), build_analysis_prompt(req, metrics, photo_facts)],
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
             response_json_schema=ANALYSIS_SCHEMA,
@@ -103,7 +106,7 @@ def analyze_with_gemini(client, model: str, req: RoomRequest, image: RoomImage, 
 
 def build_chat_system_prompt(req: RoomRequest, metrics: dict, chat: ChatRequest) -> str:
     recs = chat.recommendations.model_dump_json() if chat.recommendations else "none yet"
-    vastu = "The user wants Vastu-aware advice." if req.vastu else "Only mention Vastu if the user asks."
+    vastu = vastu_prompt(req) if req.vastu else "Only mention Vastu if the user asks."
     return (
         "You are SpaceSense, a friendly interior design consultant. Answer questions about the user's room, "
         "shown in the attached photo. The user is planning it as the room type below; treat it as that type "

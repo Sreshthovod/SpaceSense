@@ -28,7 +28,7 @@ def test_analyze_valid_rule_based(client):
     assert data["method"] == "rule_based" and data["photo_analyzed"] is False
     assert data["area_sqft"] == 168.0 and data["volume_cuft"] == 1512.0
     assert data["size_category"] == "medium" and data["budget_tier"] == "mid-range"
-    assert len(data["vastu_notes"]) == 3
+    assert len(data["vastu_notes"]) > 3 and any("living room" not in n for n in data["vastu_notes"])
     recs = data["recommendations"]
     assert recs["summary"] and recs["colors"] and recs["lighting"] and recs["budget_tips"]
     assert "not analysed" in data["disclaimer"]
