@@ -23,6 +23,21 @@ body { background: var(--color-cream); color: var(--color-ink); font-family: var
 .eyebrow { display: inline-flex; align-items: center; gap: 0.75rem; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: var(--color-sage-dark); }
 .eyebrow::before { content: ""; width: 1.75rem; height: 1px; background: currentColor; opacity: 0.7; }
 
+@keyframes scroll-dot {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.9;
+  }
+  50% {
+    transform: translateY(6px);
+    opacity: 0.25;
+  }
+}
+
+.animate-scroll-dot {
+  animation: scroll-dot 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
 
 /* Entrance animation: only hides content once JS marked the document as ready. */
 .js .reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.8s ease, transform 0.8s ease; }
