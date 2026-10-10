@@ -47,22 +47,22 @@ export default function RoomForm({ form, setForm, image, setImage, onSubmit, sub
       <Card>
         <ImageUploader file={image.file} previewUrl={image.url} error={imageError} onSelect={selectImage} onClear={() => { setImage(null); setImageError('') }} />
       </Card>
-      <Card className="space-y-2">
+      <Card className="space-y-4">
         <SelectField id="roomType" label="Room type" value={form.roomType} onChange={set('roomType')} options={ROOM_TYPES} error={errors.roomType} />
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <NumberField id="length" label="Length" suffix="ft" value={form.length} onChange={set('length')} error={errors.length} min={LIMITS.length[0]} max={LIMITS.length[1]} />
           <NumberField id="width" label="Width" suffix="ft" value={form.width} onChange={set('width')} error={errors.width} min={LIMITS.width[0]} max={LIMITS.width[1]} />
           <NumberField id="height" label="Height" suffix="ft" value={form.height} onChange={set('height')} error={errors.height} min={LIMITS.height[0]} max={LIMITS.height[1]} />
         </div>
         <NumberField id="budget" label="Budget" prefix="₹" value={form.budget} onChange={set('budget')} error={errors.budget} min={LIMITS.budget[0]} max={LIMITS.budget[1]} step={1000}
-          hint={form.budget ? formatINR(Number(form.budget)) : `${formatINR(LIMITS.budget[0])} – ${formatINR(LIMITS.budget[1])}`} />
+          hint={form.budget ? formatINR(Number(form.budget)) : `Allowed range: ${formatINR(LIMITS.budget[0])} – ${formatINR(LIMITS.budget[1])}`} />
         <ToggleSwitch id="vastu" label="Vastu preferences" description="Include Vastu-aware placement notes (optional)." checked={form.vastu} onChange={set('vastu')} />
       </Card>
       <Card className="lg:col-span-2">
         <StyleSelector value={form.style} onChange={set('style')} error={errors.style} />
         {apiError && <p role="alert" className="mt-4 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-800">{apiError}</p>}
-        <div className="mt-4 flex justify-end">
-          <Button type="submit" disabled={submitting} aria-busy={submitting}>
+        <div className="mt-6 flex justify-end">
+          <Button type="submit" disabled={submitting} aria-busy={submitting} className="w-full sm:w-auto">
             {submitting ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : <Wand2 aria-hidden="true" className="h-4 w-4" />}
             {submitting ? 'Contacting server…' : 'Generate preview'}
           </Button>

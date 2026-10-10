@@ -6,17 +6,17 @@ const steps = [
 
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:py-28">
+    <section id="how-it-works" aria-labelledby="how-it-works-heading" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:py-28">
       <div className="reveal">
         <p className="eyebrow">How It Works</p>
-        <h2 className="mt-4 font-display text-5xl font-medium leading-none sm:text-6xl">Three simple steps.</h2>
+        <h2 id="how-it-works-heading" className="mt-4 font-display text-4xl font-medium leading-none sm:text-5xl lg:text-6xl">Three simple steps.</h2>
       </div>
       <ol className="mt-14 grid gap-10 md:grid-cols-3 md:gap-0">
         {steps.map((s, i) => (
-          <li key={s.n} className="reveal border-t border-ink pt-6 md:pr-10" style={{ transitionDelay: `${i * 120}ms` }}>
-            <span className="font-display text-5xl text-sage">{s.n}</span>
-            <h3 className="mt-4 font-display text-3xl font-medium">{s.title}</h3>
-            <p className="mt-3 max-w-xs text-muted">{s.text}</p>
+          <li key={s.n} className="reveal border-t border-ink/80 pt-6 md:pr-10" style={{ transitionDelay: `${i * 120}ms` }}>
+            <span className="font-display text-4xl font-medium text-sage sm:text-5xl">{s.n}</span>
+            <h3 className="mt-4 font-display text-2xl font-medium sm:text-3xl">{s.title}</h3>
+            <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted sm:text-base">{s.text}</p>
           </li>
         ))}
       </ol>

@@ -48,7 +48,11 @@ async function post(path, payload, signal) {
   if (res.status === 422 && Array.isArray(data?.details)) {
     throw new ApiError(`Please check your inputs: ${data.details.map((d) => `${d.field} – ${d.message}`).join('; ')}`)
   }
-  if (res.status === 503) throw new ApiError('The product catalog is temporarily unavailable. Please try again later.')
+  if (res.status === 503) {
+    throw new ApiError(data?.error === 'provider_unavailable'
+      ? 'The design service is temporarily unavailable. Please try again later.'
+      : 'The product catalog is temporarily unavailable. Please try again later.')
+  }
   throw new ApiError('Something went wrong on the server. Please try again.')
 }
 
@@ -56,13 +60,12 @@ export const analyzeRoom = (payload, signal) => post('/analyze-room', payload, s
 export const generateDesign = (payload, signal) => post('/generate-design', payload, signal)
 export const recommendProducts = (payload, signal) => post('/recommend-products', payload, signal)
 
-/** Runs all three requests for one room and resolves once every one succeeds. */
+/** Fetches the analysis and product recommendations for one room; the redesign is requested separately. */
 export async function fetchRoomPlan(form, signal) {
   const payload = toRoomPayload(form)
-  const [analysis, design, products] = await Promise.all([
+  const [analysis, products] = await Promise.all([
     analyzeRoom(payload, signal),
-    generateDesign(payload, signal),
     recommendProducts(payload, signal),
   ])
-  return { analysis, design, products }
+  return { analysis, products }
 }

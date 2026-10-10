@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Navbar from './components/layout/Navbar'
 import Footer from './components/layout/Footer'
 import Hero from './components/landing/Hero'
@@ -36,8 +36,12 @@ export default function App() {
 
   const setImage = (file) => setImageState({ file, url: file ? URL.createObjectURL(file) : '' })
 
+  // A ref, not state, so two clicks in the same tick can't both pass the guard.
+  const inFlight = useRef(false)
+
   const submit = async () => {
-    if (submitting) return
+    if (inFlight.current) return
+    inFlight.current = true
     setSubmitting(true)
     setApiError('')
     try {
@@ -47,6 +51,7 @@ export default function App() {
     } catch (err) {
       setApiError(err.message || 'Something went wrong. Please try again.')
     } finally {
+      inFlight.current = false
       setSubmitting(false)
     }
   }
@@ -61,8 +66,9 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen flex-col">
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       <Navbar onHome={leaveResults} />
-      <main className="flex-1">
+      <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">
         {showResults && result ? (
           <ResultsSection form={form} imageUrl={image.url} result={result} onReset={reset} />
         ) : (
@@ -73,10 +79,10 @@ export default function App() {
             <DesignStyles onSelectStyle={selectStyle} />
             <BudgetFirst />
             <FinalCTA onStart={leaveResults} />
-            <section id="redesign" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:py-28">
+            <section id="redesign" aria-labelledby="form-heading" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:py-28">
               <p className="eyebrow">Design My Space</p>
-              <h2 className="mt-4 font-display text-5xl font-medium leading-none sm:text-6xl">Tell us about your room.</h2>
-              <p className="mb-10 mt-4 max-w-xl text-muted">All fields except Vastu are required. Your photo stays in your browser; nothing is uploaded anywhere yet.</p>
+              <h2 id="form-heading" className="mt-4 font-display text-4xl font-medium leading-none sm:text-5xl lg:text-6xl">Tell us about your room.</h2>
+              <p className="mb-10 mt-4 max-w-xl text-sm leading-relaxed text-muted sm:text-base">All fields except Vastu are required. Your photo stays in your browser; nothing is uploaded anywhere yet.</p>
               <RoomForm form={form} setForm={setForm} image={image} setImage={setImage} onSubmit={submit} submitting={submitting} apiError={apiError} />
             </section>
           </>

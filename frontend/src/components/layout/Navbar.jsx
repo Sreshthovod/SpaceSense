@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Home, Menu, X } from 'lucide-react'
 
 const links = [
@@ -9,10 +9,16 @@ const links = [
 
 export default function Navbar({ onHome }) {
   const [open, setOpen] = useState(false)
+  const menuButtonRef = useRef(null)
 
   useEffect(() => {
     if (!open) return
-    const onKey = (e) => e.key === 'Escape' && setOpen(false)
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        setOpen(false)
+        menuButtonRef.current?.focus()
+      }
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
@@ -22,14 +28,16 @@ export default function Navbar({ onHome }) {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-cream/85 backdrop-blur-md">
       <nav aria-label="Main" className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
-        <a href="#top" onClick={go} className="flex items-center gap-2.5">
+        <a href="#top" onClick={go} aria-label="SpaceSense home" className="flex items-center gap-2.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4">
           <Home aria-hidden="true" strokeWidth={1.5} className="h-5 w-5 text-sage-dark" />
           <span className="font-display text-2xl font-semibold tracking-tight">SpaceSense</span>
         </a>
         <ul className="hidden items-center gap-9 text-[0.8rem] uppercase tracking-[0.14em] lg:flex">
           {links.map((l) => (
             <li key={l.href}>
-              <a href={l.href} onClick={go} className="text-muted underline-offset-8 transition-colors hover:text-ink hover:underline">{l.label}</a>
+              <a href={l.href} onClick={go} className="rounded-sm text-muted underline-offset-8 transition-colors hover:text-ink hover:underline focus-visible:outline-2">
+                {l.label}
+              </a>
             </li>
           ))}
         </ul>
@@ -37,14 +45,15 @@ export default function Navbar({ onHome }) {
           Design My Space
         </a>
         <button
+          ref={menuButtonRef}
           type="button"
-          className="p-2 lg:hidden"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center p-2 text-ink lg:hidden"
           aria-expanded={open}
           aria-controls="mobile-menu"
           aria-label={open ? 'Close menu' : 'Open menu'}
           onClick={() => setOpen((o) => !o)}
         >
-          {open ? <X aria-hidden="true" strokeWidth={1.5} /> : <Menu aria-hidden="true" strokeWidth={1.5} />}
+          {open ? <X aria-hidden="true" strokeWidth={1.5} className="h-6 w-6" /> : <Menu aria-hidden="true" strokeWidth={1.5} className="h-6 w-6" />}
         </button>
       </nav>
       {open && (

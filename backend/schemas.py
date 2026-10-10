@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from config import MAX_BUDGET_INR, MAX_DIMENSION_FT, ROOM_TYPES, STYLES
@@ -6,14 +8,14 @@ from config import MAX_BUDGET_INR, MAX_DIMENSION_FT, ROOM_TYPES, STYLES
 class RoomRequest(BaseModel):
     """Room details shared by every endpoint. Dimensions are in feet, money in INR."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid")  # unknown fields are rejected
 
     room_type: str = Field(examples=["living room"])
-    length_ft: float = Field(gt=0, le=MAX_DIMENSION_FT)
-    width_ft: float = Field(gt=0, le=MAX_DIMENSION_FT)
-    height_ft: float = Field(gt=0, le=MAX_DIMENSION_FT)
+    length_ft: float = Field(gt=0, le=MAX_DIMENSION_FT, allow_inf_nan=False)
+    width_ft: float = Field(gt=0, le=MAX_DIMENSION_FT, allow_inf_nan=False)
+    height_ft: float = Field(gt=0, le=MAX_DIMENSION_FT, allow_inf_nan=False)
     style: str = Field(examples=["scandinavian"])
-    budget_inr: float = Field(ge=0, le=MAX_BUDGET_INR)
+    budget_inr: float = Field(ge=0, le=MAX_BUDGET_INR, allow_inf_nan=False)
     vastu: bool = False
 
     @field_validator("room_type")
@@ -46,21 +48,25 @@ class RoomAnalysis(BaseModel):
 
 
 class DesignResponse(BaseModel):
-    status: str = "mock"
-    is_ai_generated: bool = False
-    image_url: str | None = None
+    """Placeholder until an image model is integrated: never contains a generated image."""
+
+    status: Literal["mock"] = "mock"
+    is_ai_generated: Literal[False] = False
+    image_url: None = None
     message: str
-    request_summary: dict
+    request_summary: RoomRequest
 
 
 class Product(BaseModel):
-    id: str
-    name: str
-    category: str
-    price_inr: int
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    category: str = Field(min_length=1)
+    price_inr: int = Field(gt=0)
     dimensions: str
-    styles: list[str]
-    room_types: list[str]
+    styles: list[str] = Field(min_length=1)
+    room_types: list[str] = Field(min_length=1)
 
 
 class ProductRecommendations(BaseModel):
