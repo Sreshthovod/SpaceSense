@@ -1,5 +1,3 @@
-from typing import Literal
-
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from config import MAX_BUDGET_INR, MAX_DIMENSION_FT, ROOM_TYPES, STYLES
@@ -8,14 +6,14 @@ from config import MAX_BUDGET_INR, MAX_DIMENSION_FT, ROOM_TYPES, STYLES
 class RoomRequest(BaseModel):
     """Room details shared by every endpoint. Dimensions are in feet, money in INR."""
 
-    model_config = ConfigDict(extra="forbid")  # unknown fields are rejected
+    model_config = ConfigDict(extra="forbid")
 
     room_type: str = Field(examples=["living room"])
-    length_ft: float = Field(gt=0, le=MAX_DIMENSION_FT, allow_inf_nan=False)
-    width_ft: float = Field(gt=0, le=MAX_DIMENSION_FT, allow_inf_nan=False)
-    height_ft: float = Field(gt=0, le=MAX_DIMENSION_FT, allow_inf_nan=False)
+    length_ft: float = Field(gt=0, le=MAX_DIMENSION_FT)
+    width_ft: float = Field(gt=0, le=MAX_DIMENSION_FT)
+    height_ft: float = Field(gt=0, le=MAX_DIMENSION_FT)
     style: str = Field(examples=["scandinavian"])
-    budget_inr: float = Field(ge=0, le=MAX_BUDGET_INR, allow_inf_nan=False)
+    budget_inr: float = Field(ge=0, le=MAX_BUDGET_INR)
     vastu: bool = False
 
     @field_validator("room_type")
@@ -48,25 +46,21 @@ class RoomAnalysis(BaseModel):
 
 
 class DesignResponse(BaseModel):
-    """Placeholder until an image model is integrated: never contains a generated image."""
-
-    status: Literal["mock"] = "mock"
-    is_ai_generated: Literal[False] = False
-    image_url: None = None
+    status: str = "mock"
+    is_ai_generated: bool = False
+    image_url: str | None = None
     message: str
-    request_summary: RoomRequest
+    request_summary: dict
 
 
 class Product(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    id: str = Field(min_length=1)
-    name: str = Field(min_length=1)
-    category: str = Field(min_length=1)
-    price_inr: int = Field(gt=0)
+    id: str
+    name: str
+    category: str
+    price_inr: int
     dimensions: str
-    styles: list[str] = Field(min_length=1)
-    room_types: list[str] = Field(min_length=1)
+    styles: list[str]
+    room_types: list[str]
 
 
 class ProductRecommendations(BaseModel):
