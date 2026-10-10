@@ -51,8 +51,8 @@ export default function ImageUploader({ file, previewUrl, error, onSelect, onCle
           onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
           onDragLeave={() => setDragging(false)}
           onDrop={(e) => { e.preventDefault(); setDragging(false); handleFiles(e.dataTransfer.files) }}
-          className={`flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-12 text-center transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-dark ${
-            dragging ? 'border-sage-dark bg-sage/15' : error ? 'border-red-400 bg-red-50/50' : 'border-line bg-cream hover:border-sage/60 hover:bg-sand/60'
+          className={`flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-12 text-center transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-dark ${
+            dragging ? 'drop-active scale-[1.015] border-sage-dark bg-sage/15' : error ? 'border-red-400 bg-red-50/50' : 'border-line bg-cream hover:border-sage/60 hover:bg-sand/60'
           }`}
         >
           <ImagePlus aria-hidden="true" className="h-8 w-8 text-sage-dark" />

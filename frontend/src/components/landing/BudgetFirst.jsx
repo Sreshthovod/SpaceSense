@@ -14,7 +14,7 @@ export default function BudgetFirst() {
           <p className="eyebrow text-sage-light">Budget-First Design</p>
           <h2 id="budget-heading" className="mt-4 font-display text-4xl font-medium leading-[1.04] sm:text-5xl lg:text-6xl">Beautiful spaces.<br /><em className="font-normal text-sage-light">Thoughtful budgets.</em></h2>
           <p className="mt-7 max-w-md text-base leading-relaxed text-cream/75 sm:text-lg">
-            SpaceSense is designed to help you explore room transformations and furniture recommendations within the budget you choose. We are building towards this — the furniture and prices shown today are sample data, not live product listings.
+            SpaceSense is designed to help you explore room transformations and furniture recommendations within the budget you choose. Product suggestions link to real retailer listings, with the price read on the date shown; confirm it before you buy.
           </p>
         </div>
         <ul className="lg:col-span-6 lg:pl-10">
