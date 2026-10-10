@@ -4,7 +4,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { prefersReducedMotion } from '../../utils/motion'
 import { floorItemSpec } from '../model/catalog'
 import { isDrag } from '../model/camera'
-import { clampToRoom, footprint, snapFloor, snapRotationStep } from '../model/floorPlacement'
+import { clampToRoom, footprint, isRound, localParts, snapFloor, snapRotationStep } from '../model/floorPlacement'
 import FloorItemShape from './FloorItemShape'
 import Part from './Part'
 import { useResources } from './useResources'
@@ -13,9 +13,11 @@ const FLOOR = new Plane(new Vector3(0, 1, 0), 0)
 const DEG_PER_PX = 0.6
 
 /** A flat outline under the item: sage when selected, red when it has a warning. */
-function Halo({ w, d, warned }) {
-  const { material } = useResources()
-  return <Part position={[0, 0.006, 0]} scale={[w + 0.3, 0.01, d + 0.3]} mat={material(warned ? '#c0392b' : '#5b6650', { roughness: 1 })} />
+function Halo({ catalogId, w, d, warned }) {
+  const { material, upright } = useResources()
+  const mat = material(warned ? '#c0392b' : '#5b6650', { roughness: 1 })
+  if (isRound(catalogId)) return <Part geometry={upright} position={[0, 0.006, 0]} scale={[w + 0.3, 0.01, d + 0.3]} mat={mat} />
+  return localParts(catalogId, w, d).map((p, i) => <Part key={i} position={[p.cx, 0.006, p.cz]} scale={[p.w + 0.3, 0.01, p.d + 0.3]} mat={mat} />)
 }
 
 const MAX_SHADOWS = 200
@@ -34,13 +36,21 @@ function ContactShadows({ items }) {
     if (!mesh) return
     const m = new Matrix4()
     const q = new Quaternion()
-    grounded.slice(0, MAX_SHADOWS).forEach((item, i) => {
+    // One soft shadow per rectangle of the footprint, so an L-shaped sofa doesn't shade its empty corner.
+    let count = 0
+    for (const item of grounded) {
       const { w, d } = footprint(item)
-      q.setFromAxisAngle(UP, (item.rotation * Math.PI) / 180)
-      m.compose(new Vector3(item.x, 0.005, item.z), q, new Vector3(w * 1.25, 1, d * 1.25))
-      mesh.setMatrixAt(i, m)
-    })
-    mesh.count = Math.min(grounded.length, MAX_SHADOWS)
+      const rad = (item.rotation * Math.PI) / 180
+      const c = Math.cos(rad)
+      const s = Math.sin(rad)
+      q.setFromAxisAngle(UP, rad)
+      for (const p of localParts(item.catalogId, w, d)) {
+        if (count >= MAX_SHADOWS) break
+        m.compose(new Vector3(item.x + p.cx * c + p.cz * s, 0.005, item.z - p.cx * s + p.cz * c), q, new Vector3(p.w * 1.25, 1, p.d * 1.25))
+        mesh.setMatrixAt(count++, m)
+      }
+    }
+    mesh.count = count
     mesh.instanceMatrix.needsUpdate = true
     mesh.computeBoundingSphere()
   })
@@ -48,9 +58,15 @@ function ContactShadows({ items }) {
 }
 
 /** A thin box outline around a piece: solid when selected, faint on hover. */
-function Outline({ w, d, h, hover }) {
-  const { edges, outline, hoverOutline } = useResources()
-  return <lineSegments geometry={edges} material={hover ? hoverOutline : outline} position={[0, h / 2, 0]} scale={[w + 0.12, h + 0.12, d + 0.12]} raycast={() => null} dispose={null} />
+function Outline({ catalogId, w, d, h, hover }) {
+  const { edges, roundEdges, outline, hoverOutline } = useResources()
+  const material = hover ? hoverOutline : outline
+  if (isRound(catalogId)) {
+    return <lineSegments geometry={roundEdges} material={material} position={[0, h / 2, 0]} scale={[w + 0.12, h + 0.12, d + 0.12]} raycast={() => null} dispose={null} />
+  }
+  return localParts(catalogId, w, d).map((p, i) => (
+    <lineSegments key={i} geometry={edges} material={material} position={[p.cx, h / 2, p.cz]} scale={[p.w + 0.12, h + 0.12, p.d + 0.12]} raycast={() => null} dispose={null} />
+  ))
 }
 
 const DROP_MS = 420
@@ -116,8 +132,8 @@ function FloorItem({ item, selected, hovered, warned, handlers }) {
       <DropIn>
         <FloorItemShape catalogId={item.catalogId} w={w} d={d} h={h} color={item.color || spec.color} />
       </DropIn>
-      {warned && <Halo w={w} d={d} warned />}
-      {(selected || hovered) && <Outline w={w} d={d} h={Math.max(h, 0.05)} hover={!selected} />}
+      {warned && <Halo catalogId={item.catalogId} w={w} d={d} warned />}
+      {(selected || hovered) && <Outline catalogId={item.catalogId} w={w} d={d} h={Math.max(h, 0.05)} hover={!selected} />}
     </group>
   )
 }

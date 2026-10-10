@@ -52,10 +52,12 @@ export function ResourcesProvider({ children }) {
     const contact = new MeshBasicMaterial({ map: blobTexture, transparent: true, depthWrite: false, opacity: 0.5 })
     // Outline boxes: sage for the selection, a light version for hover.
     const edges = new EdgesGeometry(box)
+    // A round piece's outline: the rim at the top and bottom only (a 20° threshold drops the side seams).
+    const roundEdges = new EdgesGeometry(new CylinderGeometry(0.5, 0.5, 1, 24), 20)
     const outline = new LineBasicMaterial({ color: '#5b6650' })
     const hoverOutline = new LineBasicMaterial({ color: '#5b6650', transparent: true, opacity: 0.4 })
-    return { box, cylinder, cone, upright, sphere, plane, contact, edges, outline, hoverOutline, material, dispose: () => {
-      for (const geo of [box, cylinder, cone, upright, sphere, plane, edges]) geo.dispose()
+    return { box, cylinder, cone, upright, sphere, plane, contact, edges, roundEdges, outline, hoverOutline, material, dispose: () => {
+      for (const geo of [box, cylinder, cone, upright, sphere, plane, edges, roundEdges]) geo.dispose()
       outline.dispose()
       hoverOutline.dispose()
       for (const m of materials.values()) m.dispose()

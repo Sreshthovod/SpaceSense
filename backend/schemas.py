@@ -413,3 +413,100 @@ class StudioPrice(BaseModel):
     lines: list[StudioLine]
     suggestions: list[StudioSuggestion]
     excluded_costs: str
+
+
+# --- 3D Room Designer: AI arrange --------------------------------------------------------------
+
+LAYOUT_ID = r"^[a-z0-9-]{1,40}$"
+LayoutWall = Literal["back", "right", "front", "left"]
+_FEET = {"gt": 0, "le": 30, "allow_inf_nan": False}
+
+
+class LayoutFloorSpec(BaseModel):
+    """A floor piece the model may use. The designer's catalog stays defined in the frontend; the
+    server only sees this compact copy, bounds it, and turns its ids into the model's allowed values."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(pattern=LAYOUT_ID)
+    name: str = Field(min_length=1, max_length=60)
+    w: float = Field(**_FEET)
+    d: float = Field(**_FEET)
+    h: float = Field(**_FEET)
+    shape: Literal["rect", "round", "l"] = "rect"  # round pieces fit an ellipse; "l" is the L-shaped sofa
+    against_wall: bool = False
+    surface: bool = False  # things can stand on it
+    on_surface: bool = False  # it stands on a surface piece
+
+
+class LayoutWallSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(pattern=LAYOUT_ID)
+    name: str = Field(min_length=1, max_length=60)
+    w: float = Field(**_FEET)
+    h: float = Field(**_FEET)
+    opening: bool = False  # a door or window
+    default_y: float | None = Field(default=None, ge=0, le=30, allow_inf_nan=False)
+
+
+class LayoutFloorPiece(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    type: str = Field(pattern=LAYOUT_ID)
+    x: float = Field(ge=-200, le=200, allow_inf_nan=False)
+    z: float = Field(ge=-200, le=200, allow_inf_nan=False)
+    rotation: float = Field(default=0, ge=-3600, le=3600, allow_inf_nan=False)
+
+
+class LayoutWallPiece(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    type: str = Field(pattern=LAYOUT_ID)
+    wall: LayoutWall
+    along: float = Field(ge=-200, le=400, allow_inf_nan=False)
+    y: float | None = Field(default=None, ge=0, le=60, allow_inf_nan=False)
+    w: float | None = Field(default=None, gt=0, le=60, allow_inf_nan=False)
+    h: float | None = Field(default=None, gt=0, le=60, allow_inf_nan=False)
+
+
+class LayoutExample(BaseModel):
+    """A starter layout for this room, shown to the model as an example of the output format."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    floor: list[LayoutFloorPiece] = Field(default_factory=list, max_length=80)
+    wall: list[LayoutWallPiece] = Field(default_factory=list, max_length=40)
+
+
+class LayoutOptions(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    notes: str = Field(default="", max_length=300)
+    floor: list[LayoutFloorSpec] = Field(min_length=1, max_length=80)
+    wall: list[LayoutWallSpec] = Field(default_factory=list, max_length=40)
+    example: LayoutExample | None = None
+
+    @field_validator("notes")
+    @classmethod
+    def _notes(cls, v: str) -> str:
+        return " ".join(v.split())  # one line: notes are quoted into the prompt
+
+    @model_validator(mode="after")
+    def _unique_ids(self) -> "LayoutOptions":
+        for label, specs in (("floor", self.floor), ("wall", self.wall)):
+            ids = [s.id for s in specs]
+            if len(ids) != len(set(ids)):
+                raise ValueError(f"{label} piece ids must be unique")
+        return self
+
+
+class StudioLayout(BaseModel):
+    """A proposed arrangement. Positions are feet from the floor centre; the designer validates it again."""
+
+    provider: str
+    is_ai_generated: bool = True
+    summary: str = Field(default="", max_length=600)
+    accent_wall: LayoutWall | None = None
+    floor: list[LayoutFloorPiece] = Field(default_factory=list, max_length=80)
+    wall: list[LayoutWallPiece] = Field(default_factory=list, max_length=40)

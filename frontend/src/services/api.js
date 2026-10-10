@@ -1,7 +1,7 @@
 export const BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '')
 
 // AI calls can take a while; the product lookup is local and fast.
-const TIMEOUTS = { analyze: 90000, chat: 90000, edit: 150000, products: 15000, studio: 15000, image: 90000 }
+const TIMEOUTS = { analyze: 90000, chat: 90000, edit: 150000, products: 15000, studio: 15000, image: 90000, layout: 90000 }
 
 export class ApiError extends Error {}
 
@@ -20,7 +20,7 @@ export function toRoomPayload(form) {
   }
 }
 
-const SERVER_MESSAGE_ERRORS = new Set(['invalid_image', 'approval_required', 'analysis_failed', 'chat_failed', 'edit_failed', 'invalid_design', 'invalid_request', 'image_generation_failed', 'rate_limited'])
+const SERVER_MESSAGE_ERRORS = new Set(['invalid_image', 'approval_required', 'analysis_failed', 'chat_failed', 'edit_failed', 'invalid_design', 'invalid_request', 'image_generation_failed', 'rate_limited', 'layout_failed', 'layout_unavailable'])
 
 async function post(path, body, options) {
   return request(path, { method: 'POST', body }, options)
@@ -143,4 +143,17 @@ export function editImage({ prompt, file, provider }, signal) {
   fd.append('image', file)
   fd.append('provider', provider)
   return post('/api/edit-image', fd, { signal, timeout: TIMEOUTS.image })
+}
+
+/**
+ * Asks the server (Gemini, text only) where to put designer pieces. `room` is the room brief, `options` the
+ * catalog summary, an optional note and an example; `photo` is sent only when the user agreed to share it.
+ * Returns a proposal that the designer must still validate before placing anything.
+ */
+export function aiLayout({ room, options, photo }, signal) {
+  const fd = new FormData()
+  fd.append('room', JSON.stringify(room))
+  fd.append('layout', JSON.stringify(options))
+  if (photo) fd.append('photo', photo)
+  return post('/studio/ai-layout', fd, { signal, timeout: TIMEOUTS.layout })
 }

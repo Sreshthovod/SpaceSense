@@ -66,11 +66,23 @@ export const wallItemSpec = (catalogId) => WALL_ITEMS[catalogId]
 export const FABRICS = ['#c9b9a6', '#e4ddd2', '#9a6b52', '#7f8a6e', '#5d6b7a', '#3b3f3a', '#b85c38', '#cbb27a']
 
 /**
+ * The L-shaped sofa is a three-seater along the back plus a chaise coming forward on the right. These are
+ * the sizes of those two parts as fractions of the sofa's depth and width, shared by the 3D shape and by
+ * its collision shape, so the two can never disagree.
+ */
+export const L_SOFA_SEAT = 3.2 / 5.5
+export const L_SOFA_CHAISE = 2.8 / 8
+
+/**
  * Floor items: `size` is width × depth × height in feet at scale 1, front facing +z. These are
  * typical sizes for a generic shape; a picked product with an unambiguous listed size can override
  * them. `scale` is the allowed resize range (null: fixed size). `layer: 'rug'` lies under furniture.
  * `againstWall` items start with their back to a wall. `surface` items have a top that `onSurface`
  * items (lamps, small plants, vases) sit on when placed over them. `colors` lists colour choices.
+ * `shape` is the real footprint when it isn't the full width × depth rectangle: 'round' (an ellipse in
+ * that box) or `{parts, outline}` for an L: `parts` are the convex rectangles it is made of and `outline`
+ * its boundary, both as fractions of width and depth from the centre (x right, z towards the front).
+ * Collisions, snapping clearances, the plan view and the selection outline all follow it.
  */
 export const FLOOR_ITEMS = {
   sofa: { name: 'Three-seater sofa', category: 'sofas-chairs', size: { w: 7, d: 3, h: 2.8 }, scale: null, againstWall: true, color: '#c9b9a6', colors: FABRICS },
@@ -78,7 +90,7 @@ export const FLOOR_ITEMS = {
   'dining-chair': { name: 'Dining chair', category: 'sofas-chairs', size: { w: 1.5, d: 1.7, h: 2.8 }, scale: null, color: '#3b3f3a' },
   'desk-chair': { name: 'Desk chair', category: 'sofas-chairs', size: { w: 2.1, d: 2.1, h: 3.4 }, scale: null, color: '#5c5f55', colors: FABRICS },
   'coffee-table': { name: 'Coffee table', category: 'tables', size: { w: 3.5, d: 2, h: 1.4 }, scale: null, color: '#7a4e2d', surface: true },
-  'side-table': { name: 'Round side table', category: 'tables', size: { w: 1.5, d: 1.5, h: 1.8 }, scale: null, color: '#b08968', surface: true },
+  'side-table': { name: 'Round side table', category: 'tables', shape: 'round', size: { w: 1.5, d: 1.5, h: 1.8 }, scale: null, color: '#b08968', surface: true },
   'dining-table': { name: 'Dining table', category: 'tables', size: { w: 5, d: 3, h: 2.5 }, scale: null, color: '#8b6a45', surface: true },
   'study-desk': { name: 'Study desk', category: 'tables', size: { w: 4.6, d: 1.7, h: 2.5 }, scale: null, againstWall: true, color: '#e9e4dc', surface: true },
   'bedside-table': { name: 'Bedside table', category: 'tables', size: { w: 1.3, d: 1.35, h: 1.75 }, scale: null, color: '#e9e4dc', surface: true },
@@ -89,15 +101,25 @@ export const FLOOR_ITEMS = {
   dresser: { name: 'Chest of drawers', category: 'storage', size: { w: 2.6, d: 1.6, h: 2.6 }, scale: null, againstWall: true, color: '#e9e4dc', surface: true },
   'tv-unit': { name: 'TV unit', category: 'storage', size: { w: 4, d: 1.3, h: 1.6 }, scale: null, againstWall: true, color: '#3b2f2a', surface: true },
   rug: { name: 'Area rug', category: 'rugs', size: { w: 5, d: 7, h: 0.04 }, scale: [0.5, 2], layer: 'rug', color: '#b85c38', colors: FABRICS },
-  plant: { name: 'Floor plant', category: 'plants', size: { w: 1.5, d: 1.5, h: 4 }, scale: [0.6, 1.5], color: '#6f7f5b' },
-  'small-plant': { name: 'Small potted plant', category: 'plants', size: { w: 0.6, d: 0.6, h: 1.1 }, scale: [0.7, 1.5], color: '#6f7f5b', onSurface: true },
-  'floor-lamp': { name: 'Floor lamp', category: 'lamps', size: { w: 1.3, d: 1.3, h: 5.2 }, scale: null, color: '#e6dcc8' },
-  'table-lamp': { name: 'Table lamp', category: 'lamps', size: { w: 0.8, d: 0.8, h: 1.7 }, scale: null, color: '#f2eadc', onSurface: true },
-  pouf: { name: 'Woven pouf', category: 'decor', size: { w: 1.6, d: 1.6, h: 1.3 }, scale: null, color: '#cbb27a', colors: FABRICS },
-  vase: { name: 'Vase', category: 'decor', size: { w: 0.5, d: 0.5, h: 1 }, scale: [0.6, 1.6], color: '#a65f3c', onSurface: true },
+  plant: { name: 'Floor plant', category: 'plants', shape: 'round', size: { w: 1.5, d: 1.5, h: 4 }, scale: [0.6, 1.5], color: '#6f7f5b' },
+  'small-plant': { name: 'Small potted plant', category: 'plants', shape: 'round', size: { w: 0.6, d: 0.6, h: 1.1 }, scale: [0.7, 1.5], color: '#6f7f5b', onSurface: true },
+  'floor-lamp': { name: 'Floor lamp', category: 'lamps', shape: 'round', size: { w: 1.3, d: 1.3, h: 5.2 }, scale: null, color: '#e6dcc8' },
+  'table-lamp': { name: 'Table lamp', category: 'lamps', shape: 'round', size: { w: 0.8, d: 0.8, h: 1.7 }, scale: null, color: '#f2eadc', onSurface: true },
+  pouf: { name: 'Woven pouf', category: 'decor', shape: 'round', size: { w: 1.6, d: 1.6, h: 1.3 }, scale: null, color: '#cbb27a', colors: FABRICS },
+  vase: { name: 'Vase', category: 'decor', shape: 'round', size: { w: 0.5, d: 0.5, h: 1 }, scale: [0.6, 1.6], color: '#a65f3c', onSurface: true },
   // Living room
-  'l-sofa': { name: 'L-shaped sofa', category: 'sofas-chairs', size: { w: 8, d: 5.5, h: 2.8 }, scale: null, againstWall: true, color: '#7f8a6e', colors: FABRICS },
-  'bean-bag': { name: 'Bean bag', category: 'sofas-chairs', size: { w: 2.5, d: 2.5, h: 2.2 }, scale: null, color: '#b85c38', colors: FABRICS },
+  'l-sofa': {
+    name: 'L-shaped sofa',
+    category: 'sofas-chairs',
+    shape: {
+      parts: [
+        { x0: -0.5, x1: 0.5, z0: -0.5, z1: -0.5 + L_SOFA_SEAT }, // the three-seater along the back
+        { x0: 0.5 - L_SOFA_CHAISE, x1: 0.5, z0: -0.5 + L_SOFA_SEAT, z1: 0.5 }, // the chaise coming forward
+      ],
+      outline: [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [0.5 - L_SOFA_CHAISE, 0.5], [0.5 - L_SOFA_CHAISE, -0.5 + L_SOFA_SEAT], [-0.5, -0.5 + L_SOFA_SEAT]],
+    },
+    size: { w: 8, d: 5.5, h: 2.8 }, scale: null, againstWall: true, color: '#7f8a6e', colors: FABRICS },
+  'bean-bag': { name: 'Bean bag', category: 'sofas-chairs', shape: 'round', size: { w: 2.5, d: 2.5, h: 2.2 }, scale: null, color: '#b85c38', colors: FABRICS },
   'shoe-cabinet': { name: 'Shoe cabinet', category: 'storage', size: { w: 1.65, d: 0.95, h: 3.4 }, scale: null, againstWall: true, color: '#3b2f2a', surface: true },
   // Dining room
   sideboard: { name: 'Sideboard', category: 'storage', size: { w: 5, d: 1.5, h: 2.7 }, scale: null, againstWall: true, color: '#8b6a45', surface: true },
@@ -116,7 +138,7 @@ export const FLOOR_ITEMS = {
   stove: { name: 'Cooktop cabinet', category: 'kitchen', size: { w: 2.5, d: 2, h: 3 }, scale: null, againstWall: true, color: '#e9e4dc', surface: true },
   fridge: { name: 'Refrigerator', category: 'kitchen', size: { w: 2.3, d: 2.3, h: 5.8 }, scale: null, againstWall: true, color: '#dfe2e4' },
   'kitchen-island': { name: 'Kitchen island', category: 'kitchen', size: { w: 5, d: 2.7, h: 3 }, scale: null, color: '#8b6a45', surface: true },
-  'bar-stool': { name: 'Bar stool', category: 'kitchen', size: { w: 1.3, d: 1.3, h: 2.5 }, scale: null, color: '#3b3f3a' },
+  'bar-stool': { name: 'Bar stool', category: 'kitchen', shape: 'round', size: { w: 1.3, d: 1.3, h: 2.5 }, scale: null, color: '#3b3f3a' },
   'kitchen-trolley': { name: 'Kitchen trolley', category: 'kitchen', size: { w: 1.9, d: 1.4, h: 3 }, scale: null, color: '#b9bcbf', surface: true },
 }
 

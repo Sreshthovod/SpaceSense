@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useThree } from '@react-three/fiber'
 import { Plane, Vector2, Vector3 } from 'three'
 import { isDrag } from '../model/camera'
-import { footprint } from '../model/floorPlacement'
+import { footprint, isRound, localParts } from '../model/floorPlacement'
 import { ghostAt } from '../model/placement'
 
 const FLOOR = new Plane(new Vector3(0, 1, 0), 0)
@@ -67,16 +67,33 @@ export default function PlacementGhost({ design, size, placing, snap, onPlace, o
   if (!ghost) return null
   const { w, d, h } = footprint(ghost.item)
   const color = ghost.valid ? '#5b8a5a' : '#c0392b'
+  const round = isRound(ghost.item.catalogId)
+  const parts = round ? [] : localParts(ghost.item.catalogId, w, d)
   return (
     <group position={[ghost.item.x, (ghost.item.elevation || 0) + h / 2, ghost.item.z]} rotation={[0, (ghost.item.rotation * Math.PI) / 180, 0]} name="placement-ghost">
-      <mesh raycast={() => null}>
-        <boxGeometry args={[w, Math.max(h, 0.05), d]} />
-        <meshStandardMaterial color={color} transparent opacity={0.35} depthWrite={false} />
-      </mesh>
-      <mesh position={[0, -h / 2 + 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
-        <planeGeometry args={[w + 0.3, d + 0.3]} />
-        <meshBasicMaterial color={color} transparent opacity={0.5} depthWrite={false} />
-      </mesh>
+      {round ? (
+        <>
+          <mesh scale={[w, Math.max(h, 0.05), d]} raycast={() => null}>
+            <cylinderGeometry args={[0.5, 0.5, 1, 24]} />
+            <meshStandardMaterial color={color} transparent opacity={0.35} depthWrite={false} />
+          </mesh>
+          <mesh position={[0, -h / 2 + 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
+            <circleGeometry args={[Math.max(w, d) / 2 + 0.15, 24]} />
+            <meshBasicMaterial color={color} transparent opacity={0.5} depthWrite={false} />
+          </mesh>
+        </>
+      ) : parts.map((p, i) => (
+        <group key={i} position={[p.cx, 0, p.cz]}>
+          <mesh raycast={() => null}>
+            <boxGeometry args={[p.w, Math.max(h, 0.05), p.d]} />
+            <meshStandardMaterial color={color} transparent opacity={0.35} depthWrite={false} />
+          </mesh>
+          <mesh position={[0, -h / 2 + 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
+            <planeGeometry args={[p.w + 0.3, p.d + 0.3]} />
+            <meshBasicMaterial color={color} transparent opacity={0.5} depthWrite={false} />
+          </mesh>
+        </group>
+      ))}
     </group>
   )
 }

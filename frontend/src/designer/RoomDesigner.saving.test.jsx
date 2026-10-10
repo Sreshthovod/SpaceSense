@@ -7,6 +7,9 @@ vi.mock('./scene/DesignerScene', () => ({
   default: ({ design }) => <div data-testid="scene" data-items={design.items.map((i) => i.catalogId).join(',')} data-floor={design.floor.material} />,
 }))
 vi.mock('../services/api', () => ({
+  // The AI-arrange panel looks up which providers are set up; these tests never use it.
+  getImageProviders: () => new Promise(() => {}),
+  aiLayout: () => new Promise(() => {}),
   getStudioCatalog: () => new Promise(() => {}),
   priceDesign: () => new Promise(() => {}),
 }))
