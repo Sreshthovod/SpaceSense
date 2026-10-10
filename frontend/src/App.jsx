@@ -52,7 +52,7 @@ export default function App() {
           <ResultsSection form={form} imageUrl={image.url} onReset={reset} />
         ) : (
           <>
-            <Hero />
+            <Hero onStart={leaveResults} />
             <BeforeAfter />
             <HowItWorks />
             <DesignStyles onSelectStyle={selectStyle} />

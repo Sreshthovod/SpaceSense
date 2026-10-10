@@ -4,10 +4,12 @@
   --color-cream: #f7f5f0;
   --color-sand: #ece8de;
   --color-ink: #242620;
-  --color-muted: #66695f;
+  --color-muted: #5c5f55;
   --color-sage: #78836a;
   --color-sage-dark: #5b6650;
   --color-clay: #a65f3c;
+  --color-brass: #8f7338;
+  --color-brass-light: #b8995a;
   --color-line: #ddd8cb;
   --font-display: "Cormorant Garamond", "Iowan Old Style", Georgia, serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -18,7 +20,9 @@ body { background: var(--color-cream); color: var(--color-ink); font-family: var
 :focus-visible { outline: 2px solid var(--color-sage-dark); outline-offset: 3px; }
 .on-dark :focus-visible { outline-color: #fff; }
 
-.eyebrow { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: var(--color-sage-dark); }
+.eyebrow { display: inline-flex; align-items: center; gap: 0.75rem; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: var(--color-sage-dark); }
+.eyebrow::before { content: ""; width: 1.75rem; height: 1px; background: currentColor; opacity: 0.7; }
+
 
 /* Entrance animation: only hides content once JS marked the document as ready. */
 .js .reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.8s ease, transform 0.8s ease; }
