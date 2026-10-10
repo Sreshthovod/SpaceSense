@@ -21,11 +21,15 @@ from schemas import (
     ProductRequest,
     RoomAnalysis,
     RoomRequest,
+    StudioCatalog,
+    StudioPrice,
+    StudioPriceRequest,
 )
 from services.images import ImageValidationError, RoomImage, max_upload_bytes, validate_image
 from services import vision
 from services.products import CATALOG_PATH, CatalogError, get_product_sources, load_catalog, recommend
 from services.providers import ProviderError, get_design_editor, get_room_analyzer, get_room_chat
+from services.studio import STUDIO_CATALOG_PATH, StudioDesignError, load_mapping, price_design, studio_catalog
 
 logger = logging.getLogger("spacesense")
 
@@ -36,6 +40,7 @@ M = TypeVar("M", bound=BaseModel)
 async def lifespan(_: FastAPI):
     # Fail fast on a malformed catalog, an unknown provider name or missing provider credentials.
     load_catalog(CATALOG_PATH)
+    load_mapping(STUDIO_CATALOG_PATH)
     get_product_sources()
     get_room_analyzer()
     get_room_chat()
@@ -43,7 +48,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="SpaceSense API", version="0.3.0", lifespan=lifespan)
+app = FastAPI(title="SpaceSense API", version="0.4.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -82,6 +87,11 @@ async def http_error_handler(_: Request, exc: StarletteHTTPException):
 async def catalog_error_handler(_: Request, exc: CatalogError):
     logger.error("Catalog error: %s", exc)
     return error(503, "catalog_unavailable")
+
+
+@app.exception_handler(StudioDesignError)
+async def studio_design_error_handler(_: Request, exc: StudioDesignError):
+    return error(422, "invalid_design", str(exc), field=exc.field)
 
 
 @app.exception_handler(Exception)
@@ -193,3 +203,15 @@ async def generate_design(
 def recommend_products(req: ProductRequest):
     """Products for the room and the advice the user received. Totals use verified prices only."""
     return recommend(req)
+
+
+@app.get("/studio/catalog", response_model=StudioCatalog)
+def studio_catalog_endpoint():
+    """Verified products each 3D designer item type can stand for, with listed prices."""
+    return studio_catalog()
+
+
+@app.post("/studio/price", response_model=StudioPrice)
+def studio_price(req: StudioPriceRequest):
+    """Price a 3D design. Only types and product ids are accepted; all prices come from the catalog."""
+    return price_design(req)

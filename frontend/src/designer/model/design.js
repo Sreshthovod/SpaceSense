@@ -6,7 +6,7 @@
  */
 import { LIMITS } from '../../utils/validation'
 
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 // Demo defaults when the designer opens without a filled-in brief.
 export const DEMO = { budget: 25000, style: 'modern-indian', width: 12, length: 14, height: 9 }
@@ -32,14 +32,25 @@ export const PAINTS = [
   { id: 'charcoal', label: 'Charcoal', color: '#5d5f5a' },
 ]
 
+// Floor finishes. `pattern` picks the procedural texture; `tileFt` is how many feet one texture
+// tile covers at scale 1, so patterns keep their real-world size in any room.
 export const FLOOR_MATERIALS = {
-  wood: { label: 'Wood', color: '#a47551', roughness: 0.65 },
-  tile: { label: 'Tile', color: '#d9d4ca', roughness: 0.35 },
-  marble: { label: 'Marble', color: '#ece8e1', roughness: 0.2 },
-  concrete: { label: 'Concrete', color: '#9c9a94', roughness: 0.9 },
+  wood: { label: 'Light wood', color: '#b9895f', roughness: 0.65, pattern: 'planks', tileFt: 4 },
+  'dark-wood': { label: 'Dark wood', color: '#6b4a33', roughness: 0.6, pattern: 'planks', tileFt: 4 },
+  marble: { label: 'Marble', color: '#ece8e1', roughness: 0.25, pattern: 'marble', tileFt: 6 },
+  concrete: { label: 'Concrete', color: '#a4a29c', roughness: 0.9, pattern: 'concrete', tileFt: 5 },
+  tile: { label: 'Ceramic tile', color: '#d9d4ca', roughness: 0.4, pattern: 'tile', tileFt: 4 },
+  stone: { label: 'Neutral stone', color: '#c2b8a6', roughness: 0.75, pattern: 'stone', tileFt: 6 },
 }
 
 const HEX = /^#[0-9a-f]{6}$/i
+
+// Fields every placed item carries from schema version 2 on.
+export const ITEM_DEFAULTS = { productId: null, label: null, hidden: false, locked: false, color: null }
+export const defaultWall = (color = PAINTS[0].color) => ({ color, kind: 'paint', pattern: null, sheen: 'matte' })
+export const defaultFloor = (material = 'wood') => ({
+  material, color: FLOOR_MATERIALS[material].color, rotation: 0, scale: 1, sheen: 'matte',
+})
 
 const dimension = (raw, fallback) => {
   const n = Number(raw)
@@ -57,8 +68,8 @@ export function createDesign({ form = {}, photoName = null } = {}) {
       length: dimension(form.length, DEMO.length),
       height: dimension(form.height, DEMO.height),
     },
-    walls: Object.fromEntries(WALLS.map((w) => [w, { color: PAINTS[0].color }])),
-    floor: { material: 'wood', color: FLOOR_MATERIALS.wood.color },
+    walls: Object.fromEntries(WALLS.map((w) => [w, defaultWall()])),
+    floor: defaultFloor(),
     openings: [], // doors and windows, placed per wall
     items: [], // placed catalog items
     budget: Number(form.budget) > 0 ? Number(form.budget) : DEMO.budget,
@@ -66,6 +77,26 @@ export function createDesign({ form = {}, photoName = null } = {}) {
     choices: { removed: [], replaced: {} },
     photo: photoName ? { name: photoName } : null,
   }
+}
+
+/**
+ * Upgrades an older design object to the current schema. Unknown future versions are not touched;
+ * validateDesign() rejects them.
+ */
+export function migrate(design) {
+  let d = design
+  if (d.schemaVersion === 1) {
+    const upgrade = (list) => (Array.isArray(list) ? list.map((i) => ({ ...ITEM_DEFAULTS, ...i })) : list)
+    d = {
+      ...d,
+      schemaVersion: 2,
+      walls: Object.fromEntries(WALLS.map((w) => [w, { ...defaultWall(), ...(d.walls?.[w] || {}) }])),
+      floor: { ...defaultFloor(FLOOR_MATERIALS[d.floor?.material] ? d.floor.material : 'wood'), ...(d.floor || {}) },
+      items: upgrade(d.items),
+      openings: upgrade(d.openings),
+    }
+  }
+  return d
 }
 
 export const clampDimension = (key, value) => {
@@ -104,22 +135,6 @@ export function isBehindWall(spec, [x, , z]) {
   return (x - cx) * nx + (z - cz) * nz < 0
 }
 
-/**
- * A starting camera that looks into the room over the front-right corner. On a narrow (portrait)
- * canvas it steps back so the whole room still fits across the screen.
- */
-export function defaultView({ width, length, height }, aspect = 1.5) {
-  const reach = Math.max(width, length)
-  const target = [0, height * 0.3, 0]
-  const base = [width * 0.8 + reach * 0.15, height * 1.7 + reach * 0.25, length * 0.9 + reach * 0.45]
-  const back = Math.max(1, 1.3 / aspect)
-  return {
-    position: base.map((v, i) => target[i] + (v - target[i]) * back),
-    target,
-    minDistance: 3,
-    maxDistance: reach * 3 * back,
-  }
-}
 
 /** Width and height of one wall as seen from inside the room. */
 export function wallDims(size, wallId) {

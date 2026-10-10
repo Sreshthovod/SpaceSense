@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { AppWindow, DoorOpen, Frame, Lamp, Plus, Rows3, Circle, PanelsTopLeft } from 'lucide-react'
-import { PAINTS, WALL_LABELS, findPlaced, roomSize, wallDims } from '../model/design'
+import { WALL_LABELS, findPlaced, roomSize, wallDims } from '../model/design'
 import { OPENING_IDS, WALL_DECOR_IDS, WALL_ITEMS } from '../model/catalog'
 import { formatFeet, halfExtents, measurements } from '../model/wallPlacement'
+import { priceHint } from '../hooks/useStudioCatalog'
+import ProductPicker from './ProductPicker'
+import { WallFinishPanel } from './FinishPanels'
 
 const ICONS = { painting: Frame, mirror: Circle, shelf: Rows3, sconce: Lamp, panel: PanelsTopLeft, door: DoorOpen, window: AppWindow }
 
@@ -36,7 +39,7 @@ function NumberInput({ id, label, value, onCommit, step = 0.25, min, max, suffix
   )
 }
 
-function AddButtons({ title, ids, onAdd }) {
+function AddButtons({ title, ids, onAdd, catalog }) {
   return (
     <div>
       <p className="mb-2 text-sm font-semibold">{title}</p>
@@ -46,7 +49,10 @@ function AddButtons({ title, ids, onAdd }) {
           return (
             <button key={id} type="button" onClick={() => onAdd(id)} className="flex items-center gap-2 rounded-xl border border-line bg-white px-2.5 py-2 text-left text-xs font-medium hover:border-sage hover:bg-sand/50">
               <Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-sage-dark" />
-              <span>Add {WALL_ITEMS[id].name.toLowerCase()}</span>
+              <span>
+                <span className="block">Add {WALL_ITEMS[id].name.toLowerCase()}</span>
+                {catalog && !WALL_ITEMS[id].opening && <span className="block text-[10px] font-normal text-sage-dark">{priceHint(catalog, id)}</span>}
+              </span>
             </button>
           )
         })}
@@ -55,7 +61,7 @@ function AddButtons({ title, ids, onAdd }) {
   )
 }
 
-function Inspector({ item, wall, dispatch }) {
+function Inspector({ item, wall, dispatch, catalog, catalogError }) {
   const spec = WALL_ITEMS[item.catalogId]
   const m = measurements(item, wall)
   const { hw, hh } = halfExtents(item)
@@ -76,15 +82,19 @@ function Inspector({ item, wall, dispatch }) {
         )}
       </div>
       {spec.floorLocked && <p className="mt-2 text-[11px] text-muted">Doors always stand on the floor.</p>}
+      {!spec.opening && (
+        <div className="mt-3 border-t border-line pt-3">
+          <ProductPicker item={item} catalog={catalog} catalogError={catalogError} dispatch={dispatch} />
+        </div>
+      )}
     </section>
   )
 }
 
-export default function WallPanel({ design, wallId, selected, dispatch, onAdd }) {
+export default function WallPanel({ design, wallId, selected, dispatch, onAdd, catalog, catalogError }) {
   const wall = wallDims(roomSize(design), wallId)
   const found = selected ? findPlaced(design, selected) : null
   const item = found?.item.wall === wallId ? found.item : null
-  const color = design.walls[wallId].color
 
   return (
     <div className="space-y-5">
@@ -92,27 +102,15 @@ export default function WallPanel({ design, wallId, selected, dispatch, onAdd })
         <p className="eyebrow">Decorating</p>
         <h3 className="mt-1 font-display text-2xl font-semibold">{WALL_LABELS[wallId]}</h3>
       </div>
-      {item ? <Inspector item={item} wall={wall} dispatch={dispatch} /> : (
+      {item ? <Inspector item={item} wall={wall} dispatch={dispatch} catalog={catalog} catalogError={catalogError} /> : (
         <p className="rounded-xl border border-dashed border-line p-3 text-xs text-muted">Select an item on the wall to set its exact position and size.</p>
       )}
-      <AddButtons title="Wall décor" ids={WALL_DECOR_IDS} onAdd={onAdd} />
+      <AddButtons title="Wall décor" ids={WALL_DECOR_IDS} onAdd={onAdd} catalog={catalog} />
       <AddButtons title="Doors and windows" ids={OPENING_IDS} onAdd={onAdd} />
-      <fieldset>
-        <legend className="mb-2 text-sm font-semibold">Paint this wall</legend>
-        <div className="flex flex-wrap items-center gap-2">
-          {PAINTS.map((p) => (
-            <label key={p.id} title={p.label} className="cursor-pointer">
-              <input type="radio" name="this-wall-paint" value={p.color} checked={color === p.color} onChange={() => dispatch({ type: 'setWallColor', wall: wallId, color: p.color })} className="peer sr-only" />
-              <span className="block h-7 w-7 rounded-full border border-black/15 ring-offset-2 peer-checked:ring-2 peer-checked:ring-ink peer-focus-visible:ring-2 peer-focus-visible:ring-sage-dark" style={{ background: p.color }} />
-              <span className="sr-only">{p.label}</span>
-            </label>
-          ))}
-          <label className="ml-1 flex items-center gap-1.5 text-xs text-muted">
-            <input type="color" value={color} onChange={(e) => dispatch({ type: 'setWallColor', wall: wallId, color: e.target.value })} className="h-7 w-7 cursor-pointer rounded border border-line bg-white p-0.5" />
-            Custom
-          </label>
-        </div>
-      </fieldset>
+      <section aria-labelledby="this-wall-finish" className="space-y-2 border-t border-line pt-4">
+        <h4 id="this-wall-finish" className="text-sm font-semibold">This wall's finish</h4>
+        <WallFinishPanel walls={design.walls} wall={wallId} dispatch={dispatch} />
+      </section>
     </div>
   )
 }

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { ArrowRight, ArrowUpRight } from 'lucide-react'
 import usePrefersReducedMotion from '../../hooks/usePrefersReducedMotion'
 
-export default function Hero({ onStart }) {
+export default function Hero({ onStart, onOpenDesigner }) {
   const reduced = usePrefersReducedMotion()
   const photoRef = useRef(null)
 
@@ -56,6 +56,11 @@ export default function Hero({ onStart }) {
             <a href="#styles" className="inline-flex min-h-12 items-center gap-1.5 text-sm font-medium underline decoration-ink/40 underline-offset-[6px] transition-colors hover:text-brass hover:decoration-brass">
               Explore design styles <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
             </a>
+            {onOpenDesigner && (
+              <button type="button" onClick={onOpenDesigner} className="inline-flex min-h-12 items-center gap-1.5 text-sm font-medium underline decoration-ink/40 underline-offset-[6px] transition-colors hover:text-brass hover:decoration-brass">
+                Try the 3D designer <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+              </button>
+            )}
           </div>
           <p className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.75rem] tracking-[0.1em] text-ink/60">
             <span>Personalized design</span>

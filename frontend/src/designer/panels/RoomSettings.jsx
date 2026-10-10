@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { Ruler } from 'lucide-react'
-import {
-  DIMENSIONS, DIMENSION_LABELS, DIMENSION_LIMITS, FLOOR_MATERIALS, PAINTS,
-} from '../model/design'
+import { DIMENSIONS, DIMENSION_LABELS, DIMENSION_LIMITS } from '../model/design'
+import { FloorFinishPanel, WallFinishPanel } from './FinishPanels'
 
 export function SourceBadge({ source }) {
   return source === 'measured' ? (
@@ -64,34 +63,9 @@ function DimensionField({ id, dim, onValue, onSource }) {
   )
 }
 
-function Swatches({ legend, value, options, onPick, name }) {
-  return (
-    <fieldset>
-      <legend className="mb-2 text-sm font-semibold">{legend}</legend>
-      <div className="flex flex-wrap items-center gap-2">
-        {options.map((o) => (
-          <label key={o.id} title={o.label} className="cursor-pointer">
-            <input type="radio" name={name} value={o.color} checked={value === o.color} onChange={() => onPick(o.color)} className="peer sr-only" />
-            <span
-              className="block h-8 w-8 rounded-full border border-black/15 ring-offset-2 peer-checked:ring-2 peer-checked:ring-ink peer-focus-visible:ring-2 peer-focus-visible:ring-sage-dark"
-              style={{ background: o.color }}
-            />
-            <span className="sr-only">{o.label}</span>
-          </label>
-        ))}
-        <label className="ml-1 flex items-center gap-1.5 text-xs text-muted">
-          <input type="color" value={value} onChange={(e) => onPick(e.target.value)} className="h-8 w-8 cursor-pointer rounded border border-line bg-white p-0.5" />
-          Custom
-        </label>
-      </div>
-    </fieldset>
-  )
-}
-
 export default function RoomSettings({ design, dispatch, photoUrl }) {
   const { room, walls, floor } = design
   const area = room.width.value * room.length.value
-  const allSame = new Set(Object.values(walls).map((w) => w.color)).size === 1
 
   return (
     <div className="space-y-6">
@@ -105,7 +79,7 @@ export default function RoomSettings({ design, dispatch, photoUrl }) {
             key={key}
             id={key}
             dim={room[key]}
-            onValue={(value) => dispatch({ type: 'setDimension', key, value })}
+            onValue={(value) => dispatch({ type: 'setDimension', key, value, coalesce: `dim:${key}` })}
             onSource={(source) => dispatch({ type: 'setDimensionSource', key, source })}
           />
         ))}
@@ -115,32 +89,20 @@ export default function RoomSettings({ design, dispatch, photoUrl }) {
         </p>
       </section>
 
-      <section aria-labelledby="surfaces-heading" className="space-y-4 border-t border-line pt-5">
-        <h3 id="surfaces-heading" className="font-display text-xl font-semibold">Walls and floor</h3>
-        <Swatches
-          legend={allSame ? 'Wall paint' : 'Wall paint (applies to all walls)'}
-          name="wall-paint"
-          value={walls.back.color}
-          options={PAINTS}
-          onPick={(color) => dispatch({ type: 'setWallColor', wall: 'all', color })}
-        />
-        <fieldset>
-          <legend className="mb-2 text-sm font-semibold">Floor</legend>
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(FLOOR_MATERIALS).map(([id, m]) => (
-              <label key={id} className={`cursor-pointer rounded-full border px-3 py-1.5 text-sm has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-sage-dark ${floor.material === id ? 'border-ink bg-ink text-cream' : 'border-line bg-white hover:bg-sand'}`}>
-                <input type="radio" name="floor-material" value={id} checked={floor.material === id} onChange={() => dispatch({ type: 'setFloor', material: id })} className="sr-only" />
-                {m.label}
-              </label>
-            ))}
-          </div>
-          <label className="mt-2 flex items-center gap-1.5 text-xs text-muted">
-            <input type="color" value={floor.color} onChange={(e) => dispatch({ type: 'setFloor', color: e.target.value })} className="h-8 w-8 cursor-pointer rounded border border-line bg-white p-0.5" />
-            Floor colour
-          </label>
-        </fieldset>
+      <section aria-labelledby="walls-finish-heading" className="space-y-3 border-t border-line pt-5">
+        <h3 id="walls-finish-heading" className="font-display text-xl font-semibold">Walls</h3>
+        <WallFinishPanel walls={walls} wall="all" dispatch={dispatch} />
+      </section>
+      <section aria-labelledby="floor-finish-heading" className="space-y-3 border-t border-line pt-5">
+        <h3 id="floor-finish-heading" className="font-display text-xl font-semibold">Floor</h3>
+        <FloorFinishPanel floor={floor} dispatch={dispatch} />
       </section>
 
+      {!photoUrl && design.photo && (
+        <p className="border-t border-line pt-5 text-xs text-muted">
+          This design was made with your photo “{design.photo.name}”. Photos aren't stored with saved designs, so it isn't shown here.
+        </p>
+      )}
       {photoUrl && (
         <section aria-labelledby="photo-ref-heading" className="border-t border-line pt-5">
           <h3 id="photo-ref-heading" className="font-display text-xl font-semibold">Your photo</h3>

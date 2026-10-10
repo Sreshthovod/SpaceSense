@@ -1,16 +1,27 @@
-import { useEffect, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowLeft, Box, PaintRoller, RotateCcw, TriangleAlert } from 'lucide-react'
+import { ArrowLeft, Box, History, PaintRoller, Redo2, TriangleAlert, Undo2 } from 'lucide-react'
 import { STYLES } from '../data/sampleData'
 import { formatINR } from '../utils/format'
 import usePrefersReducedMotion from '../hooks/usePrefersReducedMotion'
 import Button from '../components/ui/Button'
 import { WALLS, WALL_LABELS, createDesign, findPlaced, onWall, roomSize, styleLabel } from './model/design'
 import { newUid } from './model/ids'
-import { GRID } from './model/wallPlacement'
-import { ROTATE_STEP, floorWarnings } from './model/floorPlacement'
-import { FurnitureCatalog, FurnitureInspector } from './panels/FurnitureCatalog'
-import { designReducer } from './model/reducer'
+import { floorWarnings, itemWorldCenter } from './model/floorPlacement'
+import { floorItemSpec, wallItemSpec } from './model/catalog'
+import useBudget from './hooks/useBudget'
+import useStudioCatalog from './hooks/useStudioCatalog'
+import BudgetPanel, { BudgetMeter } from './panels/BudgetPanel'
+import CatalogPanel from './panels/CatalogPanel'
+import Inspector from './panels/Inspector'
+import ObjectList from './panels/ObjectList'
+import useRecent from './hooks/useRecent'
+import { readDraft, saveLastCleared } from './model/storage'
+import useDesignStore from './hooks/useDesignStore'
+import useDesignerKeys from './hooks/useDesignerKeys'
+import DesignsMenu from './layout/DesignsMenu'
+import ViewportToolbar from './layout/ViewportToolbar'
+import useGestureSetting from './hooks/useGestureSetting'
 import RoomSettings from './panels/RoomSettings'
 import WallPanel from './panels/WallPanel'
 import WallEditor from './wall/WallEditor'
@@ -32,14 +43,52 @@ function NoWebGL() {
   )
 }
 
-/** Full-screen 3D designer layered over the results page. Loaded lazily so the rest of the app stays fast. */
-export default function RoomDesigner({ form, photo, photoUrl, onClose }) {
+const when = (iso) => new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+
+function RecoveryBanner({ draft, onRecover, onFresh, onDismiss }) {
+  if (draft.error) {
+    return (
+      <div role="status" className="flex flex-wrap items-center gap-3 border-b border-line bg-[#fbefe9] px-4 py-2 text-xs sm:px-6">
+        <span className="flex-1">Your last session couldn't be recovered: {draft.error}</span>
+        <button type="button" onClick={onDismiss} className="rounded-full border border-line bg-white px-3 py-1 font-semibold">OK</button>
+      </div>
+    )
+  }
+  const count = draft.design.items.length + draft.design.openings.length
+  return (
+    <div role="status" className="flex flex-wrap items-center gap-3 border-b border-line bg-sand px-4 py-2 text-xs sm:px-6">
+      <History aria-hidden="true" className="h-4 w-4 text-sage-dark" />
+      <span className="flex-1">
+        Recover your last session{draft.name ? ` (“${draft.name}”)` : ''} from {when(draft.savedAt)}? It has {count} item{count === 1 ? '' : 's'}.
+      </span>
+      <button type="button" onClick={onRecover} className="rounded-full bg-ink px-3 py-1 font-semibold text-cream">Recover</button>
+      <button type="button" onClick={onFresh} className="rounded-full border border-line bg-white px-3 py-1 font-semibold">Start fresh</button>
+    </div>
+  )
+}
+
+/**
+ * Full-screen 3D designer. Opened from the results page (with the room's brief and photo) or from
+ * the landing page (demo room). Loaded lazily so the rest of the app stays fast.
+ */
+export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, closeLabel = 'Back to results' }) {
   const reduced = usePrefersReducedMotion()
-  const [design, dispatch] = useReducer(designReducer, { form, photoName: photo?.name }, createDesign)
+  const [current, setCurrent] = useState({ id: null, name: null }) // the named design being edited, if any
+  const meta = useMemo(() => ({ designId: current.id, name: current.name }), [current])
+  const [initialDesign] = useState(() => createDesign({ form, photoName: photo?.name }))
+  const { design, dispatch, undo, redo, clearHistory, canUndo, canRedo, saveStatus } = useDesignStore(initialDesign, meta)
+  const [draft, setDraft] = useState(() => readDraft()) // the previous session, offered for recovery
+  const [dialogOpen, setDialogOpen] = useState(false)
   const [webgl] = useState(hasWebGL)
-  const [viewKey, setViewKey] = useState(0)
+  const [view, setView] = useState('3d') // '3d' | 'plan'
+  const [mode, setMode] = useState('select') // navigate | select | move | rotate
+  const [snap, setSnap] = useState(true)
+  const [gesture, setGesture] = useGestureSetting()
+  const [command, setCommand] = useState(null) // a camera request: { kind, ..., key }
   const [activeWall, setActiveWall] = useState(null)
   const [selected, setSelected] = useState(null)
+  const { catalog, error: catalogError } = useStudioCatalog()
+  const budget = useBudget(design)
   const headingRef = useRef(null)
 
   const size = roomSize(design)
@@ -47,6 +96,7 @@ export default function RoomDesigner({ form, photo, photoUrl, onClose }) {
   const warned = new Set(warnings.flatMap((w) => w.ids))
   const selectedItem = selected ? findPlaced(design, selected)?.item : null
   const styleName = styleLabel(design.style, STYLES.find((s) => s.id === design.style)?.name)
+  const suggestedName = `${form.roomType || 'Room'} — ${styleName.replace(/ \(.*\)$/, '')}`
 
   // Modal behaviour: the page underneath is inert and doesn't scroll; focus starts on the heading.
   useEffect(() => {
@@ -70,11 +120,37 @@ export default function RoomDesigner({ form, photo, photoUrl, onClose }) {
     setActiveWall(item.wall)
     setSelected(item.uid)
   }
-  const addFloorItem = (catalogId) => {
+  const [placing, setPlacing] = useState(null) // { catalogId } while a placement preview follows the pointer
+  const [recent, rememberRecent] = useRecent()
+  const addFloorItem = (catalogId, at) => {
     const uid = newUid()
-    dispatch({ type: 'addFloorItem', uid, catalogId })
+    dispatch({ type: 'addFloorItem', uid, catalogId, ...(at || {}) })
+    rememberRecent(catalogId)
+    setActiveWall(null)
     setSelected(uid)
   }
+  // From the catalog: a mouse click starts a placement preview in the 3D/plan view; the keyboard (or
+  // a browser without WebGL) adds the piece straight to a free spot.
+  const pickFromCatalog = (catalogId, viaKeyboard) => {
+    if (viaKeyboard || !webgl) addFloorItem(catalogId)
+    else {
+      setSelected(null)
+      setPlacing({ catalogId })
+    }
+  }
+  const placingRef = useRef(null)
+  useEffect(() => { placingRef.current = placing }, [placing])
+  const placeAt = useCallback((at) => {
+    const p = placingRef.current
+    if (!p) return
+    placingRef.current = null
+    const uid = newUid()
+    dispatch({ type: 'addFloorItem', uid, catalogId: p.catalogId, ...at })
+    rememberRecent(p.catalogId)
+    setSelected(uid)
+    setPlacing(null)
+  }, [dispatch, rememberRecent])
+  const cancelPlacing = useCallback(() => setPlacing(null), [])
   const duplicateSelected = () => {
     if (!selectedItem) return
     const uid = newUid()
@@ -86,71 +162,105 @@ export default function RoomDesigner({ form, photo, photoUrl, onClose }) {
     dispatch({ type: 'removePlaced', uid: selectedItem.uid })
     setSelected(null)
   }
+  const camera = (request) => setCommand((c) => ({ ...request, key: (c?.key || 0) + 1 }))
+  // Select an object and bring it into view (cost rows, double-click, F), staying in the main view.
+  const focusItem = (uid) => {
+    const found = findPlaced(design, uid)
+    if (!found) return
+    setActiveWall(null)
+    setSelected(uid)
+    camera({ kind: 'focus', ...itemWorldCenter(design, found.item) })
+  }
+  const cameraRequest = (request) => {
+    if (request.kind === 'focus') {
+      if (selected) focusItem(selected)
+      return
+    }
+    camera(request)
+  }
+  // A suggestion is only added when the user asks; it arrives with its product already chosen.
+  const addSuggestion = ({ type, product }) => {
+    const uid = newUid()
+    if (wallItemSpec(type)) dispatch({ type: 'addWallItem', uid, wall: activeWall || 'back', catalogId: type, productId: product.product_id })
+    else dispatch({ type: 'addFloorItem', uid, catalogId: type, productId: product.product_id })
+    setSelected(uid)
+  }
+  // Loading or resetting is an ordinary, undoable edit.
+  const loadDesignIntoEditor = (next, entry) => {
+    dispatch({ type: 'replaceDesign', design: next })
+    setSelected(null)
+    setActiveWall(null)
+    if (entry) setCurrent({ id: entry.id, name: entry.name })
+  }
+  const resetDesign = () => {
+    saveLastCleared(design) // may throw if storage is unavailable; the menu reports it
+    const fresh = createDesign({ form })
+    dispatch({ type: 'replaceDesign', design: { ...fresh, room: design.room, budget: design.budget, style: design.style, photo: design.photo } })
+    setSelected(null)
+    setActiveWall(null)
+  }
+  const recover = () => {
+    dispatch({ type: 'replaceDesign', design: draft.design })
+    clearHistory()
+    setCurrent({ id: draft.designId || null, name: draft.name || null })
+    setDraft(null)
+  }
+  const startFresh = () => {
+    try { saveLastCleared(draft.design) } catch { /* the draft is simply replaced */ }
+    setDraft(null)
+  }
+  const onDialog = useCallback((open) => setDialogOpen(open), [])
+
   const addWallItem = (catalogId) => {
     const uid = newUid()
     dispatch({ type: 'addWallItem', uid, wall: activeWall, catalogId })
     setSelected(uid)
   }
 
-  // Keyboard: Esc deselects (then leaves the wall), Delete removes, arrows nudge (Shift for 1 ft),
-  // R turns (Shift+R the other way), Ctrl/Cmd+D duplicates.
-  useEffect(() => {
-    const onKey = (e) => {
-      const t = e.target
-      if (t instanceof HTMLElement && (t.isContentEditable || ['INPUT', 'SELECT', 'TEXTAREA'].includes(t.tagName))) return
-      const item = selected ? findPlaced(design, selected)?.item : null
-      if (e.key === 'Escape') {
-        if (selected) setSelected(null)
-        else if (activeWall) setActiveWall(null)
-        return
-      }
-      if (!item) return
-      const uid = item.uid
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        e.preventDefault()
-        dispatch({ type: 'removePlaced', uid })
-        setSelected(null)
-        return
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
-        e.preventDefault()
-        const copy = newUid()
-        dispatch({ type: 'duplicatePlaced', uid, newUid: copy })
-        setSelected(copy)
-        return
-      }
-      if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault()
-        dispatch({ type: 'updatePlaced', uid, changes: { rotation: item.rotation + (e.shiftKey ? -ROTATE_STEP : ROTATE_STEP) } })
-        return
-      }
-      const step = e.shiftKey ? 1 : GRID
-      const nudge = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] }[e.key]
-      if (!nudge) return
-      e.preventDefault()
-      // On a wall, up is up; on the floor, up moves towards the back wall.
-      const changes = item.wall ? { x: item.x + nudge[0], y: item.y + nudge[1] } : { x: item.x + nudge[0], z: item.z - nudge[1] }
-      dispatch({ type: 'updatePlaced', uid, changes })
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [design, selected, activeWall])
+  useDesignerKeys({
+    design, selected, activeWall, dispatch, undo, redo, setSelected, setActiveWall, setMode, blocked: dialogOpen,
+    onFocus: () => (selected ? focusItem(selected) : camera({ kind: 'fit' })),
+  })
 
   return createPortal(
     <div role="dialog" aria-modal="true" aria-labelledby="designer-heading" className="fixed inset-0 z-[60] flex flex-col bg-cream text-ink">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-cream px-4 py-3 sm:px-6">
+      <header className="relative flex flex-wrap items-center justify-between gap-3 border-b border-line bg-cream px-4 py-3 sm:px-6">
         <div className="min-w-0">
-          <h2 id="designer-heading" ref={headingRef} tabIndex={-1} className="font-display text-2xl font-semibold leading-tight focus:outline-none">
+          <h2 id="designer-heading" ref={headingRef} tabIndex={-1} className="font-display text-2xl font-semibold leading-tight focus:outline-none focus-visible:outline-none">
             3D Room Designer
           </h2>
           <p className="truncate text-xs text-muted">
             {styleName} · Budget {formatINR(design.budget)} · Build your dream room. Place every item yourself.
           </p>
         </div>
-        <Button variant="secondary" onClick={onClose}>
-          <ArrowLeft aria-hidden="true" className="h-4 w-4" /> Back to results
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center rounded-full border border-line bg-white">
+            <button type="button" onClick={undo} disabled={!canUndo} aria-label="Undo" title="Undo (Ctrl/Cmd+Z)" aria-keyshortcuts="Control+Z Meta+Z" className="rounded-l-full px-2.5 py-1.5 hover:bg-sand disabled:opacity-35">
+              <Undo2 aria-hidden="true" className="h-4 w-4" />
+            </button>
+            <button type="button" onClick={redo} disabled={!canRedo} aria-label="Redo" title="Redo (Ctrl/Cmd+Shift+Z)" aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y" className="rounded-r-full border-l border-line px-2.5 py-1.5 hover:bg-sand disabled:opacity-35">
+              <Redo2 aria-hidden="true" className="h-4 w-4" />
+            </button>
+          </div>
+          <DesignsMenu
+            design={design}
+            current={current}
+            setCurrent={setCurrent}
+            suggestedName={suggestedName}
+            saveStatus={saveStatus}
+            onLoad={loadDesignIntoEditor}
+            onReset={resetDesign}
+            onDialog={onDialog}
+          />
+          <div className="hidden md:block" aria-hidden={!budget.data}>
+            <BudgetMeter data={budget.data} compact />
+          </div>
+          <Button variant="secondary" onClick={onClose}>
+            <ArrowLeft aria-hidden="true" className="h-4 w-4" /> {closeLabel}
+          </Button>
+        </div>
       </header>
+      {draft && <RecoveryBanner draft={draft} onRecover={recover} onFresh={startFresh} onDismiss={() => setDraft(null)} />}
 
       <div className="grid min-h-0 flex-1 grid-rows-[minmax(16rem,55vh)_1fr] lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-1">
         <div className="flex min-h-0 flex-col border-b border-line lg:border-b-0 lg:border-r">
@@ -164,6 +274,7 @@ export default function RoomDesigner({ form, photo, photoUrl, onClose }) {
                 dispatch={dispatch}
                 onDone={() => openWall(null)}
                 newUid={newUid}
+                snap={snap}
               />
             </div>
           )}
@@ -174,7 +285,12 @@ export default function RoomDesigner({ form, photo, photoUrl, onClose }) {
               <DesignerScene
                 design={design}
                 size={size}
-                viewKey={viewKey}
+                view={view}
+                mode={mode}
+                snap={snap}
+                command={command}
+                wheelSetting={gesture}
+                onFocusItem={(item) => focusItem(item.uid)}
                 reduced={reduced}
                 activeWall={activeWall}
                 selected={selected}
@@ -183,20 +299,23 @@ export default function RoomDesigner({ form, photo, photoUrl, onClose }) {
                 onSelectItem={selectItem}
                 onDeselect={() => setSelected(null)}
                 dispatch={dispatch}
+                placing={placing}
+                onPlace={placeAt}
+                onCancelPlacing={cancelPlacing}
                 label={`3D view of a ${size.width} by ${size.length} foot room, ${size.height} feet high`}
               />
-              <div className="pointer-events-none absolute inset-x-3 top-3 flex justify-between gap-2">
-                <p className="pointer-events-auto rounded-2xl bg-white/90 px-3 py-1.5 text-[11px] leading-snug text-muted shadow-sm sm:text-xs">
-                  Click a wall to decorate it · Drag furniture to move it · Drag the room to orbit · Scroll or pinch to zoom · Right-drag or two fingers to pan
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setViewKey((k) => k + 1)}
-                  className="pointer-events-auto inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold shadow-sm hover:bg-white"
-                >
-                  <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" /> Reset view
-                </button>
-              </div>
+              <ViewportToolbar
+                mode={mode}
+                setMode={setMode}
+                snap={snap}
+                setSnap={setSnap}
+                view={view}
+                setView={setView}
+                onCamera={cameraRequest}
+                canFocus={Boolean(selected)}
+                gesture={gesture}
+                setGesture={setGesture}
+              />
               {warnings.length > 0 && (
                 <ul aria-live="polite" className="absolute bottom-3 left-3 right-3 max-h-28 space-y-0.5 overflow-y-auto rounded-xl bg-white/95 px-3 py-2 text-xs shadow-sm sm:right-auto sm:max-w-md">
                   {warnings.map((w) => (
@@ -213,13 +332,28 @@ export default function RoomDesigner({ form, photo, photoUrl, onClose }) {
           </div>
         </div>
         <aside aria-label={activeWall ? 'Wall tools' : 'Room settings'} className="min-h-0 overflow-y-auto p-5">
+          <div className="mb-6">
+            <BudgetPanel
+              design={design}
+              dispatch={dispatch}
+              budget={budget}
+              selected={selected}
+              onSelectLine={focusItem}
+              onAddSuggestion={addSuggestion}
+              defaultOpen={false}
+              hidden={new Set([...design.items].filter((i) => i.hidden).map((i) => i.uid))}
+            />
+          </div>
+          <div className="mb-6">
+            <ObjectList design={design} selected={selected} onSelect={(item) => (item.wall ? selectItem(item) : focusItem(item.uid))} dispatch={dispatch} />
+          </div>
           {activeWall ? (
-            <WallPanel design={design} wallId={activeWall} selected={selected} dispatch={dispatch} onAdd={addWallItem} />
+            <WallPanel design={design} wallId={activeWall} selected={selected} dispatch={dispatch} onAdd={addWallItem} catalog={catalog} catalogError={catalogError} />
           ) : (
             <>
               {selectedItem && !selectedItem.wall && (
                 <div className="mb-6">
-                  <FurnitureInspector item={selectedItem} dispatch={dispatch} onDuplicate={duplicateSelected} onDelete={deleteSelected} onDeselect={() => setSelected(null)} />
+                  <Inspector item={selectedItem} design={design} mode={mode} dispatch={dispatch} onDuplicate={duplicateSelected} onDelete={deleteSelected} onDeselect={() => setSelected(null)} catalog={catalog} catalogError={catalogError} />
                 </div>
               )}
               <section aria-labelledby="walls-heading" className="mb-6">
@@ -239,8 +373,16 @@ export default function RoomDesigner({ form, photo, photoUrl, onClose }) {
                   })}
                 </div>
               </section>
-              <div className="mb-6 border-b border-line pb-6"><FurnitureCatalog onAdd={addFloorItem} /></div>
-              <RoomSettings design={design} dispatch={dispatch} photoUrl={photoUrl} />
+              <div className="mb-6 border-b border-line pb-6">
+                <CatalogPanel
+                  catalog={catalog}
+                  recent={recent}
+                  onPick={pickFromCatalog}
+                  placingName={placing ? floorItemSpec(placing.catalogId)?.name.toLowerCase() : null}
+                  onCancelPlacing={cancelPlacing}
+                />
+              </div>
+              <RoomSettings design={design} dispatch={dispatch} photoUrl={photo && design.photo?.name === photo.name ? photoUrl : null} />
             </>
           )}
         </aside>

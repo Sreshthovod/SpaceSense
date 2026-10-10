@@ -296,3 +296,120 @@ class ProductRecommendations(BaseModel):
     excluded_costs: str
     note: str | None = None
     notices: list[str] = []  # e.g. an external provider was unavailable
+
+
+# --- 3D Room Designer budget -------------------------------------------------------------------
+
+STUDIO_UID = r"^[A-Za-z0-9_-]{1,64}$"
+
+
+class StudioItem(BaseModel):
+    """One placed designer item. Only ids are sent: the server looks every price up itself."""
+
+    model_config = ConfigDict(extra="forbid")  # a client-sent price is rejected, not ignored
+
+    uid: str = Field(pattern=STUDIO_UID)
+    type: str = Field(min_length=1, max_length=40)
+    product_id: str | None = Field(default=None, min_length=1, max_length=80)
+    label: str | None = Field(default=None, max_length=80)  # the user's own name for it, echoed back
+
+
+class StudioSurface(BaseModel):
+    """Walls or floor. Listed so the breakdown shows them; the catalog has no priced finishes."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: Literal["walls", "floor"]
+    label: str = Field(min_length=1, max_length=80)
+
+
+class StudioPriceRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    budget_inr: float = Field(ge=0, le=MAX_BUDGET_INR, allow_inf_nan=False)
+    style: str | None = None
+    items: list[StudioItem] = Field(default_factory=list, max_length=300)
+    surfaces: list[StudioSurface] = Field(default_factory=list, max_length=2)
+
+    @field_validator("style")
+    @classmethod
+    def _style(cls, v: str | None) -> str | None:
+        if v is not None and v not in STYLES:
+            raise ValueError(f"must be one of: {', '.join(STYLES)}")
+        return v
+
+    @model_validator(mode="after")
+    def _unique(self) -> "StudioPriceRequest":
+        uids = [i.uid for i in self.items]
+        if len(uids) != len(set(uids)):
+            raise ValueError("item uids must be unique")
+        if len({s.id for s in self.surfaces}) != len(self.surfaces):
+            raise ValueError("each surface may appear once")
+        return self
+
+
+class StudioProduct(BaseModel):
+    """A verified catalog product a designer item can stand for."""
+
+    product_id: str
+    name: str
+    retailer: str
+    product_url: str
+    image_url: str | None
+    price_inr: int
+    last_checked: date
+    listed_size: str | None  # exactly as the retailer lists it
+    availability: Literal["in_stock", "out_of_stock"] | None
+    styles: list[str]
+
+
+class StudioType(BaseModel):
+    category: str
+    products: list[StudioProduct]
+
+
+class StudioCatalog(BaseModel):
+    currency: Literal["INR"] = "INR"
+    budget_categories: dict[str, str]
+    types: dict[str, StudioType]
+    excluded_costs: str
+
+
+class StudioLine(BaseModel):
+    uid: str | None  # None for walls and floor
+    type: str
+    label: str
+    category: str
+    product: StudioProduct | None
+    price_inr: int | None
+    price_status: Literal["verified", "unavailable"]
+    reason: Literal["generic", "no_products", "unverified", "finish"] | None = None
+
+
+class StudioCategoryTotal(BaseModel):
+    id: str
+    label: str
+    total_inr: int
+    priced_count: int
+    unpriced_count: int
+
+
+class StudioSuggestion(BaseModel):
+    type: str
+    product: StudioProduct
+
+
+class StudioPrice(BaseModel):
+    """Every number here is computed on the server from catalog prices. Unpriced lines never count."""
+
+    currency: Literal["INR"] = "INR"
+    budget_inr: float
+    total_inr: int
+    remaining_inr: float
+    over_budget_inr: float | None
+    used_ratio: float | None  # total / budget; None when the budget is 0
+    unpriced_count: int
+    categories: list[StudioCategoryTotal]
+    lines: list[StudioLine]
+    suggestions: list[StudioSuggestion]
+    excluded_costs: str

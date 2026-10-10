@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import Navbar from './components/layout/Navbar'
 import Footer from './components/layout/Footer'
 import Hero from './components/landing/Hero'
@@ -14,6 +14,8 @@ import RoomForm from './components/form/RoomForm'
 import ResultsSection from './components/results/ResultsSection'
 import StudioCurtain from './components/results/StudioCurtain'
 import { loadLooks, lookFromSearch, lookUrl, saveLook } from './utils/looks'
+
+const RoomDesigner = lazy(() => import('./designer/RoomDesigner'))
 
 const EMPTY_FORM = { roomType: '', length: '', width: '', height: '', style: '', budget: '', vastu: false, entryDirection: '' }
 
@@ -56,6 +58,19 @@ export default function App() {
   }, [initialLook, reduced])
 
   const leaveResults = () => setPhase((p) => (p === 'composing' ? p : 'landing'))
+
+  // The 3D designer can also be opened straight from the landing page: a demo room (or whatever
+  // the form already holds), the draft from last time, or a saved design. No analysis needed.
+  const [designerOpen, setDesignerOpen] = useState(false)
+  const designerOpener = useRef(null)
+  const openDesigner = () => {
+    designerOpener.current = document.activeElement
+    setDesignerOpen(true)
+  }
+  const closeDesigner = () => {
+    setDesignerOpen(false)
+    setTimeout(() => designerOpener.current?.focus?.(), 0)
+  }
   const studio = phase === 'studio' || phase === 'composing'
 
   const selectStyle = (id) => {
@@ -121,7 +136,7 @@ export default function App() {
   return (
     <div className="flex min-h-screen flex-col">
       <a href="#main-content" className="skip-link">Skip to main content</a>
-      <Navbar onHome={leaveResults} studio={studio} />
+      <Navbar onHome={leaveResults} studio={studio} onOpenDesigner={openDesigner} />
       {phase === 'composing' && <StudioCurtain form={form} imageUrl={image.url} />}
       <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">
         {phase === 'studio' && result ? (
@@ -140,7 +155,7 @@ export default function App() {
           />
         ) : (
           <>
-            <Hero onStart={leaveResults} />
+            <Hero onStart={leaveResults} onOpenDesigner={openDesigner} />
             <BeforeAfter />
             <HowItWorks />
             <DesignStyles onSelectStyle={selectStyle} selected={form.style} />
@@ -159,6 +174,11 @@ export default function App() {
         )}
       </main>
       <Footer onHome={leaveResults} />
+      {designerOpen && (
+        <Suspense fallback={<p role="status" className="fixed inset-0 z-[60] flex items-center justify-center bg-cream text-sm text-muted">Loading the 3D designer…</p>}>
+          <RoomDesigner form={form} photo={image.file} photoUrl={image.url} onClose={closeDesigner} closeLabel="Close designer" />
+        </Suspense>
+      )}
     </div>
   )
 }

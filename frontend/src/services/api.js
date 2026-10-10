@@ -1,7 +1,7 @@
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '')
 
 // AI calls can take a while; the product lookup is local and fast.
-const TIMEOUTS = { analyze: 90000, chat: 90000, edit: 150000, products: 15000 }
+const TIMEOUTS = { analyze: 90000, chat: 90000, edit: 150000, products: 15000, studio: 15000 }
 
 export class ApiError extends Error {}
 
@@ -20,9 +20,13 @@ export function toRoomPayload(form) {
   }
 }
 
-const SERVER_MESSAGE_ERRORS = new Set(['invalid_image', 'approval_required', 'analysis_failed', 'chat_failed', 'edit_failed'])
+const SERVER_MESSAGE_ERRORS = new Set(['invalid_image', 'approval_required', 'analysis_failed', 'chat_failed', 'edit_failed', 'invalid_design'])
 
-async function post(path, body, { signal, timeout }) {
+async function post(path, body, options) {
+  return request(path, { method: 'POST', body }, options)
+}
+
+async function request(path, { method, body }, { signal, timeout }) {
   const timer = new AbortController()
   const timeoutId = setTimeout(() => timer.abort(), timeout)
   const onAbort = () => timer.abort()
@@ -31,10 +35,10 @@ async function post(path, body, { signal, timeout }) {
   let res
   try {
     res = await fetch(`${BASE_URL}${path}`, {
-      method: 'POST',
+      method,
       // For FormData the browser sets the multipart boundary itself.
-      headers: isForm ? undefined : { 'Content-Type': 'application/json' },
-      body: isForm ? body : JSON.stringify(body),
+      headers: body === undefined || isForm ? undefined : { 'Content-Type': 'application/json' },
+      body: body === undefined || isForm ? body : JSON.stringify(body),
       signal: timer.signal,
     })
   } catch (err) {
@@ -112,3 +116,13 @@ export async function fetchRoomPlan(form, photo, signal) {
     return { analysis, products: null, productsError: err.message }
   }
 }
+
+/** Verified products each 3D designer item type can stand for, with their listed prices. */
+export const getStudioCatalog = (signal) =>
+  request('/studio/catalog', { method: 'GET' }, { signal, timeout: TIMEOUTS.studio })
+
+/**
+ * Prices a 3D design on the server. Only item types and chosen product ids are sent; the server
+ * looks up every price and computes every total.
+ */
+export const priceDesign = (payload, signal) => post('/studio/price', payload, { signal, timeout: TIMEOUTS.studio })
