@@ -8,6 +8,7 @@ import DesignStyles from './components/landing/DesignStyles'
 import BudgetFirst from './components/landing/BudgetFirst'
 import FinalCTA from './components/landing/FinalCTA'
 import useReveal from './hooks/useReveal'
+import { fetchRoomPlan } from './services/api'
 import RoomForm from './components/form/RoomForm'
 import ResultsSection from './components/results/ResultsSection'
 
@@ -18,6 +19,8 @@ export default function App() {
   const [image, setImageState] = useState({ file: null, url: '' })
   const [submitting, setSubmitting] = useState(false)
   const [showResults, setShowResults] = useState(false)
+  const [result, setResult] = useState(null)
+  const [apiError, setApiError] = useState('')
 
   // Revoke object URLs when replaced or on unmount.
   useEffect(() => () => { if (image.url) URL.revokeObjectURL(image.url) }, [image.url])
@@ -33,13 +36,25 @@ export default function App() {
 
   const setImage = (file) => setImageState({ file, url: file ? URL.createObjectURL(file) : '' })
 
-  const submit = () => {
+  const submit = async () => {
+    if (submitting) return
     setSubmitting(true)
-    setTimeout(() => { setSubmitting(false); setShowResults(true); window.scrollTo({ top: 0 }) }, 900)
+    setApiError('')
+    try {
+      setResult(await fetchRoomPlan(form))
+      setShowResults(true)
+      window.scrollTo({ top: 0 })
+    } catch (err) {
+      setApiError(err.message || 'Something went wrong. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const reset = () => {
     setShowResults(false)
+    setResult(null)
+    setApiError('')
     setForm(EMPTY_FORM)
     setImage(null)
   }
@@ -48,8 +63,8 @@ export default function App() {
     <div className="flex min-h-screen flex-col">
       <Navbar onHome={leaveResults} />
       <main className="flex-1">
-        {showResults ? (
-          <ResultsSection form={form} imageUrl={image.url} onReset={reset} />
+        {showResults && result ? (
+          <ResultsSection form={form} imageUrl={image.url} result={result} onReset={reset} />
         ) : (
           <>
             <Hero onStart={leaveResults} />
@@ -62,7 +77,7 @@ export default function App() {
               <p className="eyebrow">Design My Space</p>
               <h2 className="mt-4 font-display text-5xl font-medium leading-none sm:text-6xl">Tell us about your room.</h2>
               <p className="mb-10 mt-4 max-w-xl text-muted">All fields except Vastu are required. Your photo stays in your browser; nothing is uploaded anywhere yet.</p>
-              <RoomForm form={form} setForm={setForm} image={image} setImage={setImage} onSubmit={submit} submitting={submitting} />
+              <RoomForm form={form} setForm={setForm} image={image} setImage={setImage} onSubmit={submit} submitting={submitting} apiError={apiError} />
             </section>
           </>
         )}

@@ -5,17 +5,18 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from config import ALLOWED_ORIGINS
+from config import get_allowed_origins
 from schemas import DesignResponse, ProductRecommendations, RoomAnalysis, RoomRequest
 from services.analysis import analyze_room
-from services.products import load_catalog, recommend
+from services.products import CATALOG_PATH, CatalogError, load_catalog, recommend
 
 logger = logging.getLogger("spacesense")
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    load_catalog()  # fail fast if the sample catalog is missing or malformed
+    load_catalog(CATALOG_PATH)  # fail fast if the sample catalog is missing or malformed
     yield
 
 
@@ -23,7 +24,7 @@ app = FastAPI(title="SpaceSense API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=get_allowed_origins(),
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],
 )
@@ -36,6 +37,17 @@ async def validation_error_handler(_: Request, exc: RequestValidationError):
         for e in exc.errors()
     ]
     return JSONResponse(status_code=422, content={"error": "validation_error", "details": details})
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_error_handler(_: Request, exc: StarletteHTTPException):
+    return JSONResponse(status_code=exc.status_code, content={"error": "http_error", "details": [{"field": "body", "message": str(exc.detail)}]})
+
+
+@app.exception_handler(CatalogError)
+async def catalog_error_handler(_: Request, exc: CatalogError):
+    logger.error("Catalog error: %s", exc)
+    return JSONResponse(status_code=503, content={"error": "catalog_unavailable", "details": []})
 
 
 @app.exception_handler(Exception)
@@ -59,7 +71,7 @@ def generate_design(req: RoomRequest):
     """MOCK: no model is called and no image is produced."""
     return DesignResponse(
         message="Mock response. AI design generation is not integrated yet; no image was generated.",
-        request_summary=req.model_dump(),
+        request_summary=req,
     )
 
 

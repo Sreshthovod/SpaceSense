@@ -11,7 +11,7 @@ import StyleSelector from './StyleSelector'
 
 const ORDER = ['roomType', 'length', 'width', 'height', 'style', 'budget']
 
-export default function RoomForm({ form, setForm, image, setImage, onSubmit, submitting }) {
+export default function RoomForm({ form, setForm, image, setImage, onSubmit, submitting, apiError }) {
   const [errors, setErrors] = useState({})
   const [imageError, setImageError] = useState('')
   const formRef = useRef(null)
@@ -60,10 +60,11 @@ export default function RoomForm({ form, setForm, image, setImage, onSubmit, sub
       </Card>
       <Card className="lg:col-span-2">
         <StyleSelector value={form.style} onChange={set('style')} error={errors.style} />
+        {apiError && <p role="alert" className="mt-4 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-800">{apiError}</p>}
         <div className="mt-4 flex justify-end">
-          <Button type="submit" disabled={submitting}>
+          <Button type="submit" disabled={submitting} aria-busy={submitting}>
             {submitting ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : <Wand2 aria-hidden="true" className="h-4 w-4" />}
-            {submitting ? 'Preparing preview…' : 'Generate preview'}
+            {submitting ? 'Contacting server…' : 'Generate preview'}
           </Button>
         </div>
       </Card>
