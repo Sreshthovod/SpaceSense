@@ -7,6 +7,7 @@ import HowItWorks from './components/landing/HowItWorks'
 import DesignStyles from './components/landing/DesignStyles'
 import BudgetFirst from './components/landing/BudgetFirst'
 import FinalCTA from './components/landing/FinalCTA'
+import ImageGenerator from './components/imagegen/ImageGenerator'
 import useReveal from './hooks/useReveal'
 import usePrefersReducedMotion from './hooks/usePrefersReducedMotion'
 import { fetchRoomPlan } from './services/api'
@@ -160,6 +161,7 @@ export default function App() {
             <HowItWorks />
             <DesignStyles onSelectStyle={selectStyle} selected={form.style} />
             <BudgetFirst />
+            <ImageGenerator />
             <FinalCTA onStart={leaveResults} />
             <section id="redesign" aria-labelledby="form-heading" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:py-28">
               <p className="eyebrow">Design My Space</p>

@@ -26,6 +26,7 @@ from schemas import (
     StudioPriceRequest,
 )
 from services.images import ImageValidationError, RoomImage, max_upload_bytes, validate_image
+from services import imagegen
 from services import vision
 from services.products import CATALOG_PATH, CatalogError, get_product_sources, load_catalog, recommend
 from services.providers import ProviderError, get_design_editor, get_room_analyzer, get_room_chat
@@ -215,3 +216,89 @@ def studio_catalog_endpoint():
 def studio_price(req: StudioPriceRequest):
     """Price a 3D design. Only types and product ids are accepted; all prices come from the catalog."""
     return price_design(req)
+
+
+IMAGEGEN_KEYS = {"cloudflare": "CF_API_TOKEN and CF_ACCOUNT_ID", "gemini": "GEMINI_API_KEY"}
+IMAGEGEN_FAILURES = {
+    # reason: (status, user message); {provider} and {keys} are filled in per request
+    "not_configured": (503, "{provider} image generation isn't set up on this server yet."),
+    "quota": (429, "The {provider} allowance has been used up for now. Please try again later, or pick the other provider."),
+    "auth": (502, "{provider} rejected the server's credentials. Check {keys} on the backend."),
+    "timeout": (504, "The image service took too long to respond. Please try again."),
+    "rejected": (502, "The image service couldn't process that request. Try a different prompt or image."),
+}
+
+
+def imagegen_failure(exc: imagegen.ImageGenError, provider: str) -> JSONResponse:
+    status, message = IMAGEGEN_FAILURES.get(exc.reason, (502, "The image service failed. Please try again."))
+    return error(status, "image_generation_failed", message.format(provider=provider.capitalize(), keys=IMAGEGEN_KEYS[provider]))
+
+
+def imagegen_rate_limited(request: Request) -> JSONResponse | None:
+    # The socket address, not X-Forwarded-For: that header is client-controlled unless a trusted proxy sets it.
+    wait = imagegen.get_rate_limiter().check(request.client.host if request.client else "unknown")
+    if not wait:
+        return None
+    response = error(429, "rate_limited", f"Too many image requests. Try again in {int(wait) + 1} seconds.")
+    response.headers["Retry-After"] = str(int(wait) + 1)
+    return response
+
+
+@app.exception_handler(imagegen.ImageGenValidationError)
+async def imagegen_validation_handler(_: Request, exc: imagegen.ImageGenValidationError):
+    return error(413 if exc.too_large else 400, "invalid_request", str(exc), field=exc.field)
+
+
+@app.get("/api/image-providers")
+def image_providers_endpoint():
+    """Which image providers have credentials on this server, so the UI can disable the others."""
+    return imagegen.provider_status()
+
+
+@app.post("/api/generate-image")
+async def generate_image_endpoint(request: Request):
+    """Text to image. `provider` is "cloudflare" (FLUX.1 schnell, the default) or "gemini".
+    Returns {"image": "data:image/...;base64,...", "provider": ...}."""
+    if limited := imagegen_rate_limited(request):
+        return limited
+    try:
+        body = await request.json()
+    except ValueError:
+        return error(400, "invalid_request", "The request body must be JSON.")
+    if not isinstance(body, dict):
+        return error(400, "invalid_request", "The request body must be a JSON object.")
+    prompt = imagegen.validate_prompt(body.get("prompt"))
+    steps = imagegen.validate_steps(body.get("steps"))
+    provider = imagegen.validate_provider(body.get("provider"))
+    try:
+        if provider == "gemini":
+            image = await run_in_threadpool(imagegen.gemini_generate, prompt)
+        else:
+            image = await run_in_threadpool(imagegen.generate_image, prompt, steps)
+    except imagegen.ImageGenError as exc:
+        logger.error("Image generation failed (%s, %s): %s", provider, exc.reason, exc)
+        return imagegen_failure(exc, provider)
+    return {"image": image, "provider": provider}
+
+
+@app.post("/api/edit-image")
+async def edit_image_endpoint(
+    request: Request, prompt: str = Form(""), image: UploadFile = File(...), provider: str = Form("")
+):
+    """Generate on top of an uploaded PNG, JPEG or WebP (5 MB max) with FLUX.2 klein (cloudflare, the default) or Gemini."""
+    if limited := imagegen_rate_limited(request):
+        return limited
+    prompt = imagegen.validate_prompt(prompt)
+    provider = imagegen.validate_provider(provider)
+    data = await image.read(imagegen.MAX_EDIT_UPLOAD_BYTES + 1)
+    try:
+        if provider == "gemini":
+            mime = imagegen.validate_upload(data)
+            result = await run_in_threadpool(imagegen.gemini_generate, prompt, data, mime)
+        else:
+            source = await run_in_threadpool(imagegen.prepare_edit_image, data)
+            result = await run_in_threadpool(imagegen.edit_image, prompt, source)
+    except imagegen.ImageGenError as exc:
+        logger.error("Image edit failed (%s, %s): %s", provider, exc.reason, exc)
+        return imagegen_failure(exc, provider)
+    return {"image": result, "provider": provider}

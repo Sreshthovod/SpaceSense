@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import main
-from services import products, providers
+from services import imagegen, products, providers
 
 
 
@@ -52,6 +52,9 @@ def isolated_env(monkeypatch):
     monkeypatch.setenv("SPACESENSE_PRODUCT_PROVIDER", "catalog")
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.delenv("SERPAPI_API_KEY", raising=False)
+    monkeypatch.delenv("CF_ACCOUNT_ID", raising=False)
+    monkeypatch.delenv("CF_API_TOKEN", raising=False)
+    imagegen.reset_rate_limiter()
     caches = (providers.get_room_analyzer, providers.get_room_chat, providers.get_design_editor,
               products.get_product_sources)
     for c in caches:

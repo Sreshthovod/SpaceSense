@@ -1,7 +1,7 @@
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '')
 
 // AI calls can take a while; the product lookup is local and fast.
-const TIMEOUTS = { analyze: 90000, chat: 90000, edit: 150000, products: 15000, studio: 15000 }
+const TIMEOUTS = { analyze: 90000, chat: 90000, edit: 150000, products: 15000, studio: 15000, image: 90000 }
 
 export class ApiError extends Error {}
 
@@ -20,7 +20,7 @@ export function toRoomPayload(form) {
   }
 }
 
-const SERVER_MESSAGE_ERRORS = new Set(['invalid_image', 'approval_required', 'analysis_failed', 'chat_failed', 'edit_failed', 'invalid_design'])
+const SERVER_MESSAGE_ERRORS = new Set(['invalid_image', 'approval_required', 'analysis_failed', 'chat_failed', 'edit_failed', 'invalid_design', 'invalid_request', 'image_generation_failed', 'rate_limited'])
 
 async function post(path, body, options) {
   return request(path, { method: 'POST', body }, options)
@@ -126,3 +126,20 @@ export const getStudioCatalog = (signal) =>
  * looks up every price and computes every total.
  */
 export const priceDesign = (payload, signal) => post('/studio/price', payload, { signal, timeout: TIMEOUTS.studio })
+
+/** Which image providers have credentials on the server: { cloudflare, gemini }. */
+export const getImageProviders = (signal) =>
+  request('/api/image-providers', { method: 'GET' }, { signal, timeout: TIMEOUTS.studio })
+
+/** Text to image with the chosen provider ('cloudflare' or 'gemini'). Returns { image } as a data URL. Only the backend calls the provider. */
+export const generateImage = ({ prompt, provider }, signal) =>
+  post('/api/generate-image', { prompt, provider }, { signal, timeout: TIMEOUTS.image })
+
+/** Generates on top of an uploaded PNG, JPEG or WebP (5 MB max) with the chosen provider. Returns { image }. */
+export function editImage({ prompt, file, provider }, signal) {
+  const fd = new FormData()
+  fd.append('prompt', prompt)
+  fd.append('image', file)
+  fd.append('provider', provider)
+  return post('/api/edit-image', fd, { signal, timeout: TIMEOUTS.image })
+}
