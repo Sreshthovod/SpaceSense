@@ -12,9 +12,8 @@ export default function RoomAnalysisPanel({ analysis }) {
     <Card>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="font-display text-2xl font-semibold">Room analysis</h3>
-        <span className="rounded-full bg-sand px-2.5 py-0.5 text-xs font-semibold text-clay">Rule-based</span>
+        <span className="rounded-full bg-sand px-2.5 py-0.5 text-xs font-semibold text-clay">From your inputs</span>
       </div>
-      <p className="mt-1 text-xs text-muted">{analysis.disclaimer}</p>
       <dl className="mt-4 grid grid-cols-3 gap-3 text-sm">
         {stats.map(([k, v]) => (
           <div key={k}><dt className="text-xs text-muted">{k}</dt><dd className="font-semibold">{v}</dd></div>

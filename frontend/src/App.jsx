@@ -45,7 +45,7 @@ export default function App() {
     setSubmitting(true)
     setApiError('')
     try {
-      setResult(await fetchRoomPlan(form))
+      setResult(await fetchRoomPlan(form, image.file))
       setShowResults(true)
       window.scrollTo({ top: 0 })
     } catch (err) {
@@ -70,7 +70,7 @@ export default function App() {
       <Navbar onHome={leaveResults} />
       <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">
         {showResults && result ? (
-          <ResultsSection form={form} imageUrl={image.url} result={result} onReset={reset} />
+          <ResultsSection form={form} photo={image.file} imageUrl={image.url} result={result} onReset={reset} />
         ) : (
           <>
             <Hero onStart={leaveResults} />
@@ -82,7 +82,7 @@ export default function App() {
             <section id="redesign" aria-labelledby="form-heading" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:py-28">
               <p className="eyebrow">Design My Space</p>
               <h2 id="form-heading" className="mt-4 font-display text-4xl font-medium leading-none sm:text-5xl lg:text-6xl">Tell us about your room.</h2>
-              <p className="mb-10 mt-4 max-w-xl text-sm leading-relaxed text-muted sm:text-base">All fields except Vastu are required. Your photo stays in your browser; nothing is uploaded anywhere yet.</p>
+              <p className="mb-10 mt-4 max-w-xl text-sm leading-relaxed text-muted sm:text-base">All fields except Vastu are required. Your photo is sent to the SpaceSense server for analysis, which may use Google's Gemini. It is only edited if you approve.</p>
               <RoomForm form={form} setForm={setForm} image={image} setImage={setImage} onSubmit={submit} submitting={submitting} apiError={apiError} />
             </section>
           </>
