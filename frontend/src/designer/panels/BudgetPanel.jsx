@@ -23,7 +23,7 @@ export function BudgetMeter({ data, compact = false }) {
   const tone = budgetTone(ratio)
   const width = ratio === null ? (data.total_inr > 0 ? 100 : 0) : Math.min(100, ratio * 100)
   return (
-    <div className={compact ? 'w-40' : ''}>
+    <div className={compact ? 'w-20 sm:w-40' : ''}>
       <div
         role="meter"
         aria-label="Budget used"

@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Ruler } from 'lucide-react'
 import { DIMENSIONS, DIMENSION_LABELS, DIMENSION_LIMITS } from '../model/design'
-import { FloorFinishPanel, WallFinishPanel } from './FinishPanels'
 
 export function SourceBadge({ source }) {
   return source === 'measured' ? (
@@ -64,7 +63,7 @@ function DimensionField({ id, dim, onValue, onSource }) {
 }
 
 export default function RoomSettings({ design, dispatch, photoUrl }) {
-  const { room, walls, floor } = design
+  const { room } = design
   const area = room.width.value * room.length.value
 
   return (
@@ -87,15 +86,6 @@ export default function RoomSettings({ design, dispatch, photoUrl }) {
           Floor area {area.toLocaleString('en-IN', { maximumFractionDigits: 1 })} sq ft. <strong className="font-semibold text-ink">Measured</strong> means you entered it;
           <strong className="font-semibold text-ink"> estimated</strong> values are placeholders to check with a tape measure.
         </p>
-      </section>
-
-      <section aria-labelledby="walls-finish-heading" className="space-y-3 border-t border-line pt-5">
-        <h3 id="walls-finish-heading" className="font-display text-xl font-semibold">Walls</h3>
-        <WallFinishPanel walls={walls} wall="all" dispatch={dispatch} />
-      </section>
-      <section aria-labelledby="floor-finish-heading" className="space-y-3 border-t border-line pt-5">
-        <h3 id="floor-finish-heading" className="font-display text-xl font-semibold">Floor</h3>
-        <FloorFinishPanel floor={floor} dispatch={dispatch} />
       </section>
 
       {!photoUrl && design.photo && (

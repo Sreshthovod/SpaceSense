@@ -182,6 +182,35 @@ If a live source fails, the app shows a notice and carries on with the catalog.
 
 **Limitations:** the catalog is one retailer (IKEA India) and a few dozen items; prices go stale until the refresh tool is run; dimensions come from the listing name and aren't checked against your room size; no live stock or delivery-pincode checks; other retailers appear only as search links unless SerpAPI is configured.
 
+## 3D Room Designer
+
+Open it from the results page (**Open 3D Room Designer**), or from the landing page (**Try the 3D designer**, or **3D Designer** in the navbar) without running an analysis. It loads only when opened (about 290 KB gzipped: `three` 0.182 and `@react-three/fiber` 9.8).
+
+**Layout.** Top bar: undo/redo, your designs, budget, close. Left: the library (Furniture, Walls, Floor, Room tabs; a drawer on tablets and phones). Centre: the 3D view with mode, snap, 3D/Plan, camera and help controls. Right: the inspector for the selected piece or open wall (a bottom sheet on small screens).
+
+**Getting around.**
+
+| Input | 3D view | Plan view |
+| --- | --- | --- |
+| Left-drag on empty space | Orbit | Pan |
+| Right-drag, Shift+drag, two-finger trackpad scroll | Pan | Pan |
+| Scroll wheel, pinch | Zoom | Zoom |
+| Double-click a piece, or `F` | Focus on it (nothing selected: fit the room) | Same |
+
+Modes (`H` Navigate, `V` Select, `M` Move, `E` Rotate): Navigate never selects; Select selects with a click and drags always move the camera; Move drags a piece along the floor; Rotate turns it as you drag sideways. A press only becomes a drag after 4 px, the camera is switched off during an object drag, and `Esc` cancels a drag. Other keys: arrows nudge 3 in (Shift: 1 ft), `R`/`Shift+R` turn 15°, `Delete`/`Backspace` removes, `Ctrl/Cmd+D` duplicates, `Ctrl/Cmd+Z` undoes, `Ctrl/Cmd+Shift+Z` or `Ctrl+Y` redoes. If two-finger scrolling zooms instead of panning on your trackpad, choose **Help → Always pan**.
+
+**What you can do.** Place 22 kinds of furniture (click a card, then the floor: the preview is green where it fits, red where it would collide or block a door) and decorate each wall in a front-on editor (art, mirrors, clocks, shelves, lamps, panels, curtains, doors, windows). Lamps, vases and small plants sit on table tops. Paint walls or wallpaper them (per wall), and choose one of six floor materials with direction, pattern size and finish. Snap to the grid, walls and other pieces (or turn snapping off). Rename, hide and lock pieces in **Room → In this room**.
+
+**Prices.** Every item type maps only to verified catalog products that genuinely match it (`backend/data/studio_catalog.json`, tested against `products.json`). A placed piece is a *generic shape* with no price until you pick a product in the inspector. `POST /studio/price` computes all totals on the server from product ids; a price sent by the browser is rejected. Paint, wallpaper and flooring have no verified products, so they're listed as unpriced. A product with an unambiguous `W x D x H cm` listed size resizes the shape; other listed sizes are shown as text only.
+
+**Saving.** Designs are saved in this browser only (localStorage): a draft autosaves 0.8 s after each change and is offered back next time; named versions can be saved, opened, renamed, duplicated and deleted. Every load is validated and migrated (`schemaVersion` 2). Photos aren't stored with designs. Undo/redo keeps 100 steps; camera moves, selection and panels never create steps.
+
+**Performance** (30 mixed pieces, headless Chrome on a MacBook): a steady 60 fps while orbiting, about 160 draw calls, 5k triangles, 11 GPU geometries and 5 textures, with no growth across add/clear cycles. The scene renders only on change, shadows only re-render when the room changes, contact shadows are one instanced mesh, the pixel ratio is capped at 1.5, and textures are 512 px procedural canvases. Add `?perf` to the URL to see live numbers. Please re-check on the target Windows laptop (4 GB GPU).
+
+**Colour accuracy.** Neutral tone mapping with calibrated lights keeps a front-lit wall within ΔE 5 of the chosen swatch (measured: warm white 1.2, sage 4.9, terracotta 4.8, charcoal 2.9).
+
+**Limitations.** One photo can't give an accurate 3D room, so the room is built from the dimensions you enter (each marked *measured* or *estimated*) and the photo is a reference only. Doors and windows are drawn on the wall surface, not cut through it. Furniture shapes are simplified; overlapping pieces are allowed with a warning. Saved designs don't sync between devices.
+
 ## API
 
 Room details are the same everywhere (feet and INR):
@@ -202,6 +231,8 @@ Room details are the same everywhere (feet and INR):
 | POST | `/analyze-room` | multipart: `room` (JSON string), `photo` (file) | Metrics plus `recommendations` and `method` (`rule_based`/`gemini`), `photo_analyzed`. Never edits images. |
 | POST | `/chat` | multipart: `room`, `photo`, `chat` (JSON `{"messages": [{"role": "user"\|"assistant", "content": "..."}], "recommendations": {...}}`; last message from the user, max 30 messages, 2000 chars each) | `{"reply", "provider", "is_ai_generated"}`. Text only. |
 | POST | `/generate-design` | multipart: `room`, `photo` (the original), `instructions` (JSON `{"items": [...], "notes": ""}`), `approved=true` | `status: "edited"` with `image_url` (data URL of the edited photo), or `status: "mock"` with `image_url: null` |
+| GET | `/studio/catalog` | — | Each 3D designer item type with the verified products it can stand for (`product_id`, `name`, `price_inr`, `last_checked`, `listed_size`, links) and its budget category |
+| POST | `/studio/price` | JSON `{"budget_inr", "style", "items": [{"uid", "type", "product_id"?, "label"?}], "surfaces": [{"id": "walls"\|"floor", "label"}]}`. Prices are rejected. | `lines` (each `verified` with a price or `unavailable` with a `reason`), `categories` totals, `total_inr`, `remaining_inr`, `over_budget_inr`, `used_ratio`, `unpriced_count`, `suggestions` that fit the remaining budget |
 | POST | `/recommend-products` | JSON room details, plus optional `recommendations` (the advice from `/analyze-room`) and `categories` filter | `items` (each with `kind` `verified_product`/`suggestion`, `selected`, `price_inr`, `quantity`, `line_total_inr`, `links`, `last_checked`, `why`, `notes`), `total_inr`, `remaining_inr`, `shortfall_inr`, `unpriced_count`, `excluded_costs`, `note`, `notices`, `sources` |
 
 Errors share one shape, `{"error": "...", "details": [{"field", "message"}]}`:
@@ -214,7 +245,8 @@ Errors share one shape, `{"error": "...", "details": [{"field", "message"}]}`:
 | 502 / 429 / 504 | `analysis_failed` | The analysis provider failed (429 = AI quota reached, 504 = timeout) |
 | 502 / 429 / 504 | `chat_failed` | The chat provider failed, hit its quota or timed out |
 | 502 / 429 / 504 | `edit_failed` | The image editor returned no edited image, hit its quota or timed out; nothing is fabricated and the original is unchanged |
-| 503 | `catalog_unavailable` | Product catalog missing or malformed |
+| 422 | `invalid_design` | `/studio/price`: unknown item type, or a product that isn't allowed for that type |
+| 503 | `catalog_unavailable` | Product catalog or designer catalog missing or malformed |
 | 404 / 405 | `http_error` | Unknown route or wrong method |
 | 500 | `internal_error` | Anything unexpected (no internal details exposed) |
 
@@ -240,7 +272,9 @@ backend/
     images.py           photo type and size validation
     products.py         product sources, relevance, in-budget plan
     shopping.py         optional SerpAPI Google Shopping source
+    studio.py           3D designer pricing from catalog product ids
   data/products.json    curated catalog: verified IKEA India listings + unpriced ideas
+  data/studio_catalog.json   designer item types → verified products they can stand for
   tools/refresh_catalog.py   re-checks catalog prices from retailer product pages
   tests/                pytest suite (fake Gemini client; no network)
 frontend/
@@ -250,6 +284,12 @@ frontend/
   src/components/results/FurniturePanel.jsx "Shop the look" product cards and budget bar (+ test)
   src/utils/productPlan.js                  selected-product totals (+ test)
   src/components/       landing/, form/, upload/, results/, layout/, ui/
+  src/designer/         3D Room Designer (lazy-loaded)
+    model/              pure logic + tests: design schema, reducer, history, storage, validation,
+                        wall/floor placement, camera maths, catalog, finishes, pricing payload
+    scene/              three.js scene: room, furniture, camera rig, plan overlay, textures
+    wall/               front-facing wall editor (SVG)
+    panels/ layout/ hooks/   inspector, catalog, budget, finishes, toolbar, sidebar, keyboard
 ```
 
 The backend is stateless: it stores nothing. The original photo stays in the browser and is never replaced; the edited image is kept separately in page state.
@@ -271,4 +311,4 @@ The backend is stateless: it stores nothing. The original photo stays in the bro
 
 ## Not built yet
 
-Live prices from more retailers (affiliate APIs), saving designs and shopping lists (e.g. Supabase), multi-turn editing of an edited result, and automated checks that edits preserve room geometry.
+Live prices from more retailers (affiliate APIs), saving designs and shopping lists to an account (designs are saved in the browser only), multi-turn editing of an edited result, and automated checks that edits preserve room geometry. Optional 3D designer extras not built: PNG screenshot, design JSON export/import, day/night lighting, measurements between pieces, templates, material favourites, before/after with the photo, and moving several pieces together.

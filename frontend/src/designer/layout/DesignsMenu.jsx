@@ -71,11 +71,14 @@ export default function DesignsMenu({ design, current, setCurrent, suggestedName
         aria-expanded={open}
         aria-controls="designs-panel"
         onClick={() => { setOpen((o) => !o); setList(listDesigns()); setMessage({ text: '', error: false }) }}
-        className="flex max-w-[14rem] items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1.5 text-left text-xs hover:bg-sand"
+        className="flex max-w-[7rem] items-center gap-1 rounded-full border border-line bg-white px-2.5 py-1.5 text-left text-xs hover:bg-sand sm:max-w-[14rem] sm:gap-1.5 sm:px-3"
       >
         <span className="min-w-0">
           <span className="block truncate font-semibold">{current.name || 'Unsaved design'}</span>
-          <span className={`block truncate text-[10px] ${saveStatus.error ? 'text-clay' : 'text-muted'}`} data-testid="save-status">{status}</span>
+          <span className={`flex items-center gap-1 truncate text-[10px] ${saveStatus.error ? 'text-clay' : 'text-muted'}`} data-testid="save-status">
+            {saveStatus.savedAt && !saveStatus.error && <Check key={String(saveStatus.savedAt)} aria-hidden="true" className="saved-flash h-3 w-3 text-sage-dark" />}
+            {status}
+          </span>
         </span>
         <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
       </button>

@@ -226,3 +226,8 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* 3D designer: the brief tick next to "Draft saved". */
+@keyframes saved-flash { 0% { opacity: 0; } 15% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
+.saved-flash { animation: saved-flash 2.4s ease forwards; }
+@media (prefers-reduced-motion: reduce) { .saved-flash { animation: none; opacity: 0; } }
