@@ -2,12 +2,13 @@ import { ExternalLink, ShieldCheck } from 'lucide-react'
 import { formatINR } from '../../utils/format'
 import { formatChecked, safeHttpsUrl } from '../../utils/productPlan'
 import { findProduct } from '../hooks/useStudioCatalog'
+import { parseListedSize } from '../model/floorPlacement'
 
 /**
  * Which real product a placed shape stands for. Only verified products for this item type are
  * offered; "Generic shape" means no product and no price. Nothing is picked automatically.
  */
-export default function ProductPicker({ item, catalog, catalogError, dispatch }) {
+export default function ProductPicker({ item, catalog, catalogError, dispatch, disabled = false }) {
   const products = catalog?.types?.[item.catalogId]?.products || []
   const chosen = findProduct(catalog, item.catalogId, item.productId)
   const id = `product-${item.uid}`
@@ -25,8 +26,14 @@ export default function ProductPicker({ item, catalog, catalogError, dispatch })
       <select
         id={id}
         value={item.productId || ''}
-        onChange={(e) => dispatch({ type: 'setProduct', uid: item.uid, productId: e.target.value || null })}
-        className="mt-1 w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-sm focus:border-sage-dark focus:outline-none focus:ring-2 focus:ring-sage-dark"
+        disabled={disabled}
+        onChange={(e) => {
+          const product = products.find((p) => p.product_id === e.target.value)
+          // Floor pieces take the product's listed size when it's unambiguous (W × D × H).
+          const size = !item.wall && product ? parseListedSize(product.listed_size) : null
+          dispatch({ type: 'setProduct', uid: item.uid, productId: product?.product_id || null, ...(size ? { size } : {}) })
+        }}
+        className="mt-1 w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-sm focus:border-sage-dark focus:outline-none focus:ring-2 focus:ring-sage-dark disabled:bg-sand disabled:text-muted"
       >
         <option value="">Generic shape (not a product, no price)</option>
         {products.map((p) => (
@@ -38,7 +45,12 @@ export default function ProductPicker({ item, catalog, catalogError, dispatch })
           <p className="flex items-center gap-1 font-semibold text-sage-dark">
             <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5" /> {formatINR(chosen.price_inr)} · verified {formatChecked(chosen.last_checked)}
           </p>
-          {chosen.listed_size && <p className="mt-0.5 text-muted">Listed size: {chosen.listed_size}. The 3D shape is a typical size, not this product's exact size.</p>}
+          {chosen.listed_size && (
+            <p className="mt-0.5 text-muted">
+              Listed size: {chosen.listed_size}.{' '}
+              {item.size ? 'The 3D shape uses this size.' : "The 3D shape is a typical size, not this product's exact size."}
+            </p>
+          )}
           {url && (
             <a href={url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 font-semibold underline underline-offset-2">
               View on {chosen.retailer} <ExternalLink aria-hidden="true" className="h-3 w-3" />

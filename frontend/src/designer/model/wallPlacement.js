@@ -57,7 +57,9 @@ export function clampToWall(item, wall) {
   }
   let rotation = ((Math.round(item.rotation || 0) % 360) + 360) % 360
   if (spec && !spec.rotatable) rotation = 0
-  const sized = { ...item, w: clean(w), h: clean(h), rotation }
+  // Sizes round down, so rounding can never make an item wider than the wall it fills.
+  const down = (v) => Math.floor(v * 1000 + 1e-9) / 1000
+  const sized = { ...item, w: down(w), h: down(h), rotation }
   let { hw, hh } = halfExtents(sized)
   if (hw * 2 > wall.span || hh * 2 > wall.height) {
     // A rotated item that no longer fits goes back upright.

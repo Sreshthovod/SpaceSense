@@ -32,11 +32,15 @@ export const PAINTS = [
   { id: 'charcoal', label: 'Charcoal', color: '#5d5f5a' },
 ]
 
+// Floor finishes. `pattern` picks the procedural texture; `tileFt` is how many feet one texture
+// tile covers at scale 1, so patterns keep their real-world size in any room.
 export const FLOOR_MATERIALS = {
-  wood: { label: 'Wood', color: '#a47551', roughness: 0.65 },
-  tile: { label: 'Tile', color: '#d9d4ca', roughness: 0.35 },
-  marble: { label: 'Marble', color: '#ece8e1', roughness: 0.2 },
-  concrete: { label: 'Concrete', color: '#9c9a94', roughness: 0.9 },
+  wood: { label: 'Light wood', color: '#b9895f', roughness: 0.65, pattern: 'planks', tileFt: 4 },
+  'dark-wood': { label: 'Dark wood', color: '#6b4a33', roughness: 0.6, pattern: 'planks', tileFt: 4 },
+  marble: { label: 'Marble', color: '#ece8e1', roughness: 0.25, pattern: 'marble', tileFt: 6 },
+  concrete: { label: 'Concrete', color: '#a4a29c', roughness: 0.9, pattern: 'concrete', tileFt: 5 },
+  tile: { label: 'Ceramic tile', color: '#d9d4ca', roughness: 0.4, pattern: 'tile', tileFt: 4 },
+  stone: { label: 'Neutral stone', color: '#c2b8a6', roughness: 0.75, pattern: 'stone', tileFt: 6 },
 }
 
 const HEX = /^#[0-9a-f]{6}$/i

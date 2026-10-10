@@ -52,14 +52,14 @@ describe('clampToRoom', () => {
 
 describe('snapFloor', () => {
   it('pulls an item flush against a nearby wall', () => {
-    expect(snapFloor(sofa({ x: 0.1, z: -6.2 }), [], size)).toEqual({ x: 0, z: -6.5 })
+    expect(snapFloor(sofa({ x: 0.1, z: -6.2 }), [], size)).toEqual({ x: 0, z: -6.5, guides: [{ axis: 'x', at: 0 }, { axis: 'z', at: -8 }] })
   })
 
   it('aligns to other furniture edges, otherwise the grid', () => {
     const table = { uid: 't', catalogId: 'coffee-table', wall: null, x: 4, z: 2, rotation: 0, scale: 1 } // left edge 2.25
     const chair = { ...sofa(), catalogId: 'armchair', x: 1.05, z: 1.1 } // right edge 2.35
     expect(snapFloor(chair, [table], size).x).toBe(0.95)
-    expect(snapFloor(sofa({ x: 0.6, z: 1.1 }), [], size)).toEqual({ x: 0.5, z: 1 })
+    expect(snapFloor(sofa({ x: 0.6, z: 1.1 }), [], size)).toEqual({ x: 0.5, z: 1, guides: [] })
   })
 })
 

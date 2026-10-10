@@ -1,7 +1,9 @@
-import { useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { FLOOR_MATERIALS, WALL_THICKNESS, isBehindWall, onWall, wallSpecs } from '../model/design'
 import WallItemMesh from './WallItemMesh'
+import { WALLPAPERS, floorRoughness, textureRepeat, wallRoughness } from '../model/finishes'
+import { makeFloorTexture, makeWallpaper } from './textures'
 
 const HIDDEN_LAYER = 31
 
@@ -9,7 +11,22 @@ const HIDDEN_LAYER = 31
  * A wall and everything attached to it, in the wall's local space (origin on the inner face at floor
  * level, centred along the wall; +z points into the room).
  */
-function Wall({ spec, color, items, active, selected, onSelectWall, onSelectItem }) {
+/** Frees a texture's GPU memory when it's replaced or the scene closes. */
+function useDisposeTexture(texture) {
+  useEffect(() => () => texture?.dispose(), [texture])
+}
+
+function Wall({ spec, finish, items, active, selected, onSelectWall, onSelectItem }) {
+  const { color, kind, pattern, sheen } = finish
+  const paper = kind === 'wallpaper' && WALLPAPERS[pattern]
+  const texture = useMemo(() => {
+    if (!paper) return null
+    const t = makeWallpaper(pattern, color)
+    // The box's inner face spans the wall plus both corners; repeat so one pattern tile is tileFt.
+    t.repeat.set(textureRepeat(spec.span + WALL_THICKNESS * 2, paper.tileFt), textureRepeat(spec.height, paper.tileFt))
+    return t
+  }, [paper, pattern, color, spec.span, spec.height])
+  useDisposeTexture(texture)
   const ref = useRef(null)
   const cutAway = useRef(false)
   const [hovered, setHovered] = useState(false)
@@ -45,7 +62,14 @@ function Wall({ spec, color, items, active, selected, onSelectWall, onSelectItem
         onPointerOut={() => { setHovered(false); document.body.style.cursor = '' }}
       >
         <boxGeometry args={[spec.span + WALL_THICKNESS * 2, spec.height, WALL_THICKNESS]} />
-        <meshStandardMaterial color={color} roughness={0.9} emissive="#78836a" emissiveIntensity={highlight} />
+        <meshStandardMaterial
+          key={texture ? texture.uuid : 'paint'}
+          color={texture ? '#ffffff' : color}
+          map={texture}
+          roughness={wallRoughness(sheen)}
+          emissive="#78836a"
+          emissiveIntensity={highlight}
+        />
       </mesh>
       {items.filter((item) => !item.hidden).map((item) => (
         <WallItemMesh key={item.uid} item={item} span={spec.span} selected={item.uid === selected} onSelect={onSelectItem} />
@@ -56,7 +80,18 @@ function Wall({ spec, color, items, active, selected, onSelectWall, onSelectItem
 
 export default function Room({ size, design, activeWall, selected, onSelectWall, onSelectItem, onDeselect }) {
   const specs = wallSpecs(size)
-  const material = FLOOR_MATERIALS[design.floor.material]
+  const { floor } = design
+  const material = FLOOR_MATERIALS[floor.material] || FLOOR_MATERIALS.wood
+  const floorTexture = useMemo(() => {
+    const t = makeFloorTexture(material.pattern, floor.color)
+    // Real-world sized repeats, the chosen rotation, and a fixed offset so seams don't line up with walls.
+    t.repeat.set(textureRepeat(size.width, material.tileFt, floor.scale), textureRepeat(size.length, material.tileFt, floor.scale))
+    t.center.set(0.5, 0.5)
+    t.rotation = ((floor.rotation || 0) * Math.PI) / 180
+    t.offset.set(0.137, 0.291)
+    return t
+  }, [material.pattern, material.tileFt, floor.color, floor.scale, floor.rotation, size.width, size.length])
+  useDisposeTexture(floorTexture)
   return (
     <group>
       <mesh
@@ -70,13 +105,13 @@ export default function Room({ size, design, activeWall, selected, onSelectWall,
         }}
       >
         <planeGeometry args={[size.width, size.length]} />
-        <meshStandardMaterial color={design.floor.color} roughness={material.roughness} />
+        <meshStandardMaterial key={floorTexture.uuid} map={floorTexture} roughness={floorRoughness(material.roughness, floor.sheen)} />
       </mesh>
       {specs.map((spec) => (
         <Wall
           key={spec.id}
           spec={spec}
-          color={design.walls[spec.id].color}
+          finish={design.walls[spec.id]}
           items={onWall(design, spec.id)}
           active={activeWall === spec.id}
           selected={selected}

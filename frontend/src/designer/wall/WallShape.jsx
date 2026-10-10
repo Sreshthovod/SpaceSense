@@ -19,6 +19,14 @@ export default function WallShape({ catalogId, w, h, color }) {
           <path d={`M${-w * 0.2} ${-h * 0.15} L${-w * 0.05} ${-h * 0.3}`} stroke="#ffffff" strokeWidth="0.06" strokeLinecap="round" />
         </>
       )
+    case 'clock':
+      return (
+        <>
+          <ellipse rx={w / 2} ry={h / 2} fill={color} />
+          <ellipse rx={w / 2 - 0.06} ry={h / 2 - 0.06} fill="#f7f5f0" />
+          <path d={`M0 0 V${-h * 0.3} M0 0 H${w * 0.22}`} stroke={color} strokeWidth="0.05" strokeLinecap="round" />
+        </>
+      )
     case 'shelf':
       return <rect x={x} y={y} width={w} height={h} rx="0.03" fill={color} />
     case 'sconce':

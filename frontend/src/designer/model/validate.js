@@ -11,13 +11,13 @@ import {
 } from './design'
 import { clampToRoom } from './floorPlacement'
 import { clampToWall } from './wallPlacement'
+import { FLOOR_ROTATIONS, FLOOR_SCALE, FLOOR_SHEENS, WALLPAPERS, WALL_SHEENS } from './finishes'
 
 export class DesignLoadError extends Error {}
 
 const UID = /^[A-Za-z0-9_-]{1,64}$/
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v)
 const num = (v, fallback) => (typeof v === 'number' && Number.isFinite(v) ? v : fallback)
-const SHEENS = ['matte', 'eggshell', 'satin', 'polished']
 
 function cleanItem(raw, size, notices) {
   if (!isObject(raw) || typeof raw.uid !== 'string' || !UID.test(raw.uid)) {
@@ -48,7 +48,11 @@ function cleanItem(raw, size, notices) {
       ...base, x: num(raw.x, dims.span / 2), y: num(raw.y, spec.defaultY), w: num(raw.w, spec.size.w), h: num(raw.h, spec.size.h),
     }, dims)
   }
-  return clampToRoom({ ...base, x: num(raw.x, 0), z: num(raw.z, 0), scale: num(raw.scale, 1) }, size)
+  const floor = { ...base, x: num(raw.x, 0), z: num(raw.z, 0), scale: num(raw.scale, 1) }
+  const s = raw.size
+  if (isObject(s) && ['w', 'd', 'h'].every((k) => typeof s[k] === 'number' && s[k] > 0 && s[k] <= 30)) floor.size = { w: s.w, d: s.d, h: s.h }
+  if (typeof raw.elevation === 'number' && raw.elevation > 0 && raw.elevation <= 20) floor.elevation = raw.elevation
+  return clampToRoom(floor, size)
 }
 
 /** Returns { design, notices }. Throws DesignLoadError when the data can't be used at all. */
@@ -70,17 +74,17 @@ export function validateDesign(raw) {
   const walls = Object.fromEntries(WALLS.map((w) => {
     const wall = isObject(d.walls?.[w]) ? d.walls[w] : {}
     const out = defaultWall(isHexColor(wall.color) ? wall.color : undefined)
-    if (wall.kind === 'wallpaper' && typeof wall.pattern === 'string') Object.assign(out, { kind: 'wallpaper', pattern: wall.pattern.slice(0, 40) })
-    if (SHEENS.includes(wall.sheen)) out.sheen = wall.sheen
+    if (wall.kind === 'wallpaper' && WALLPAPERS[wall.pattern]) Object.assign(out, { kind: 'wallpaper', pattern: wall.pattern })
+    if (WALL_SHEENS[wall.sheen]) out.sheen = wall.sheen
     return [w, out]
   }))
 
   const f = isObject(d.floor) ? d.floor : {}
   const floor = defaultFloor(FLOOR_MATERIALS[f.material] ? f.material : 'wood')
   if (isHexColor(f.color)) floor.color = f.color
-  if ([0, 45, 90].includes(f.rotation)) floor.rotation = f.rotation
-  floor.scale = Math.min(3, Math.max(0.25, num(f.scale, 1)))
-  if (SHEENS.includes(f.sheen)) floor.sheen = f.sheen
+  if (FLOOR_ROTATIONS.includes(f.rotation)) floor.rotation = f.rotation
+  floor.scale = Math.min(FLOOR_SCALE[1], Math.max(FLOOR_SCALE[0], num(f.scale, 1)))
+  if (FLOOR_SHEENS[f.sheen]) floor.sheen = f.sheen
 
   const seen = new Set()
   const clean = (list) => (Array.isArray(list) ? list : [])

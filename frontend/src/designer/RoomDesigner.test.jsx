@@ -165,7 +165,7 @@ describe('RoomDesigner', () => {
     webgl.available = true
     render(<RoomDesigner form={form} onClose={() => {}} />)
     fireEvent.click(screen.getByRole('button', { name: 'Add three-seater sofa' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Add potted plant' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add floor plant' }))
     fireEvent.click(screen.getByRole('button', { name: /^Budget/ }))
     const budget = screen.getByLabelText('Budget (₹)')
     fireEvent.change(budget, { target: { value: '90000' } })

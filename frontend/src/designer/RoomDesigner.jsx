@@ -8,11 +8,14 @@ import Button from '../components/ui/Button'
 import { WALLS, WALL_LABELS, createDesign, findPlaced, onWall, roomSize, styleLabel } from './model/design'
 import { newUid } from './model/ids'
 import { floorWarnings, itemWorldCenter } from './model/floorPlacement'
-import { wallItemSpec } from './model/catalog'
+import { floorItemSpec, wallItemSpec } from './model/catalog'
 import useBudget from './hooks/useBudget'
 import useStudioCatalog from './hooks/useStudioCatalog'
 import BudgetPanel, { BudgetMeter } from './panels/BudgetPanel'
-import { FurnitureCatalog, FurnitureInspector } from './panels/FurnitureCatalog'
+import CatalogPanel from './panels/CatalogPanel'
+import Inspector from './panels/Inspector'
+import ObjectList from './panels/ObjectList'
+import useRecent from './hooks/useRecent'
 import { readDraft, saveLastCleared } from './model/storage'
 import useDesignStore from './hooks/useDesignStore'
 import useDesignerKeys from './hooks/useDesignerKeys'
@@ -117,11 +120,37 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
     setActiveWall(item.wall)
     setSelected(item.uid)
   }
-  const addFloorItem = (catalogId) => {
+  const [placing, setPlacing] = useState(null) // { catalogId } while a placement preview follows the pointer
+  const [recent, rememberRecent] = useRecent()
+  const addFloorItem = (catalogId, at) => {
     const uid = newUid()
-    dispatch({ type: 'addFloorItem', uid, catalogId })
+    dispatch({ type: 'addFloorItem', uid, catalogId, ...(at || {}) })
+    rememberRecent(catalogId)
+    setActiveWall(null)
     setSelected(uid)
   }
+  // From the catalog: a mouse click starts a placement preview in the 3D/plan view; the keyboard (or
+  // a browser without WebGL) adds the piece straight to a free spot.
+  const pickFromCatalog = (catalogId, viaKeyboard) => {
+    if (viaKeyboard || !webgl) addFloorItem(catalogId)
+    else {
+      setSelected(null)
+      setPlacing({ catalogId })
+    }
+  }
+  const placingRef = useRef(null)
+  useEffect(() => { placingRef.current = placing }, [placing])
+  const placeAt = useCallback((at) => {
+    const p = placingRef.current
+    if (!p) return
+    placingRef.current = null
+    const uid = newUid()
+    dispatch({ type: 'addFloorItem', uid, catalogId: p.catalogId, ...at })
+    rememberRecent(p.catalogId)
+    setSelected(uid)
+    setPlacing(null)
+  }, [dispatch, rememberRecent])
+  const cancelPlacing = useCallback(() => setPlacing(null), [])
   const duplicateSelected = () => {
     if (!selectedItem) return
     const uid = newUid()
@@ -270,6 +299,9 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
                 onSelectItem={selectItem}
                 onDeselect={() => setSelected(null)}
                 dispatch={dispatch}
+                placing={placing}
+                onPlace={placeAt}
+                onCancelPlacing={cancelPlacing}
                 label={`3D view of a ${size.width} by ${size.length} foot room, ${size.height} feet high`}
               />
               <ViewportToolbar
@@ -309,7 +341,11 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
               onSelectLine={focusItem}
               onAddSuggestion={addSuggestion}
               defaultOpen={false}
+              hidden={new Set([...design.items].filter((i) => i.hidden).map((i) => i.uid))}
             />
+          </div>
+          <div className="mb-6">
+            <ObjectList design={design} selected={selected} onSelect={(item) => (item.wall ? selectItem(item) : focusItem(item.uid))} dispatch={dispatch} />
           </div>
           {activeWall ? (
             <WallPanel design={design} wallId={activeWall} selected={selected} dispatch={dispatch} onAdd={addWallItem} catalog={catalog} catalogError={catalogError} />
@@ -317,7 +353,7 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
             <>
               {selectedItem && !selectedItem.wall && (
                 <div className="mb-6">
-                  <FurnitureInspector item={selectedItem} dispatch={dispatch} onDuplicate={duplicateSelected} onDelete={deleteSelected} onDeselect={() => setSelected(null)} catalog={catalog} catalogError={catalogError} />
+                  <Inspector item={selectedItem} design={design} mode={mode} dispatch={dispatch} onDuplicate={duplicateSelected} onDelete={deleteSelected} onDeselect={() => setSelected(null)} catalog={catalog} catalogError={catalogError} />
                 </div>
               )}
               <section aria-labelledby="walls-heading" className="mb-6">
@@ -337,7 +373,15 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
                   })}
                 </div>
               </section>
-              <div className="mb-6 border-b border-line pb-6"><FurnitureCatalog onAdd={addFloorItem} catalog={catalog} /></div>
+              <div className="mb-6 border-b border-line pb-6">
+                <CatalogPanel
+                  catalog={catalog}
+                  recent={recent}
+                  onPick={pickFromCatalog}
+                  placingName={placing ? floorItemSpec(placing.catalogId)?.name.toLowerCase() : null}
+                  onCancelPlacing={cancelPlacing}
+                />
+              </div>
               <RoomSettings design={design} dispatch={dispatch} photoUrl={photo && design.photo?.name === photo.name ? photoUrl : null} />
             </>
           )}

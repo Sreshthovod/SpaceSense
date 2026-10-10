@@ -52,7 +52,7 @@ describe('validateDesign', () => {
     const { design } = validateDesign(broken)
     expect(design.room.width).toEqual({ value: 60, source: 'estimated' })
     expect(design.walls.left.color).toBe('#efe9df')
-    expect(design.floor).toMatchObject({ material: 'wood', rotation: 0, scale: 3 })
+    expect(design.floor).toMatchObject({ material: 'wood', rotation: 0, scale: 2 })
     expect(design.items[0].x).toBeLessThanOrEqual(30)
     expect(design.items[0].label).toHaveLength(80)
     expect(design.budget).toBe(0)

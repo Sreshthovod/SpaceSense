@@ -87,7 +87,7 @@ function BudgetInputs({ design, dispatch }) {
   )
 }
 
-function Line({ line, selected, onSelect }) {
+function Line({ line, selected, onSelect, hidden }) {
   const url = line.product && safeHttpsUrl(line.product.product_url)
   const clickable = Boolean(line.uid)
   const body = (
@@ -95,7 +95,7 @@ function Line({ line, selected, onSelect }) {
       <span className="min-w-0 flex-1">
         <span className="block truncate text-xs font-medium">{line.product?.name || line.label}</span>
         <span className="block truncate text-[10px] text-muted">
-          {line.product ? line.label : REASONS[line.reason] || 'No verified price'}
+          {line.product ? line.label : REASONS[line.reason] || 'No verified price'}{hidden ? ' · hidden' : ''}
         </span>
       </span>
       <span className={`shrink-0 text-xs ${line.price_inr === null ? 'text-muted' : 'font-semibold'}`}>
@@ -130,7 +130,7 @@ function Line({ line, selected, onSelect }) {
  * The design's cost, all computed by the server from verified catalog prices. Items without a
  * verified product are listed separately and never counted.
  */
-export default function BudgetPanel({ design, dispatch, budget, selected, onSelectLine, onAddSuggestion, defaultOpen = true }) {
+export default function BudgetPanel({ design, dispatch, budget, selected, onSelectLine, onAddSuggestion, defaultOpen = true, hidden = new Set() }) {
   const [open, setOpen] = useState(defaultOpen)
   const { data, error, loading } = budget
   const priced = data?.lines.filter((l) => l.price_inr !== null) || []
@@ -169,13 +169,13 @@ export default function BudgetPanel({ design, dispatch, budget, selected, onSele
                 {priced.length > 0 && (
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">In your total</p>
-                    <ul className="mt-1 space-y-0.5">{priced.map((l) => <Line key={l.uid} line={l} selected={l.uid === selected} onSelect={onSelectLine} />)}</ul>
+                    <ul className="mt-1 space-y-0.5">{priced.map((l) => <Line key={l.uid} line={l} selected={l.uid === selected} onSelect={onSelectLine} hidden={hidden.has(l.uid)} />)}</ul>
                   </div>
                 )}
                 {unpriced.length > 0 && (
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Not in the total</p>
-                    <ul className="mt-1 space-y-0.5">{unpriced.map((l) => <Line key={l.uid || l.type} line={l} selected={l.uid === selected} onSelect={onSelectLine} />)}</ul>
+                    <ul className="mt-1 space-y-0.5">{unpriced.map((l) => <Line key={l.uid || l.type} line={l} selected={l.uid === selected} onSelect={onSelectLine} hidden={hidden.has(l.uid)} />)}</ul>
                   </div>
                 )}
                 {data.suggestions.length > 0 && (

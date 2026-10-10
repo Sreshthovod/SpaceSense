@@ -23,6 +23,15 @@ function Parts({ catalogId, w, h, d, color }) {
           <Part geometry={cylinder} position={[0, 0, d + 0.005]} scale={[w - 0.2, h - 0.2, 0.01]} mat={material('#dfe8ec', { roughness: 0.15, metalness: 0.1 })} />
         </>
       )
+    case 'clock':
+      return (
+        <>
+          <Part geometry={cylinder} position={[0, 0, d / 2]} scale={[w, h, d]} mat={material(color, { roughness: 0.5, metalness: 0.3 })} />
+          <Part geometry={cylinder} position={[0, 0, d + 0.005]} scale={[w - 0.12, h - 0.12, 0.01]} mat={material('#f7f5f0')} />
+          <Part position={[0, h * 0.12, d + 0.02]} scale={[0.04, h * 0.28, 0.01]} mat={material(color)} />
+          <Part position={[w * 0.16, 0, d + 0.025]} rotation={[0, 0, Math.PI / 2]} scale={[0.035, w * 0.36, 0.01]} mat={material(color)} />
+        </>
+      )
     case 'shelf':
       return <Part position={[0, 0, d / 2]} scale={[w, h, d]} mat={material(color)} />
     case 'sconce':

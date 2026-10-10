@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { AppWindow, DoorOpen, Frame, Lamp, Plus, Rows3, Circle, PanelsTopLeft } from 'lucide-react'
-import { PAINTS, WALL_LABELS, findPlaced, roomSize, wallDims } from '../model/design'
+import { WALL_LABELS, findPlaced, roomSize, wallDims } from '../model/design'
 import { OPENING_IDS, WALL_DECOR_IDS, WALL_ITEMS } from '../model/catalog'
 import { formatFeet, halfExtents, measurements } from '../model/wallPlacement'
 import { priceHint } from '../hooks/useStudioCatalog'
 import ProductPicker from './ProductPicker'
+import { WallFinishPanel } from './FinishPanels'
 
 const ICONS = { painting: Frame, mirror: Circle, shelf: Rows3, sconce: Lamp, panel: PanelsTopLeft, door: DoorOpen, window: AppWindow }
 
@@ -94,7 +95,6 @@ export default function WallPanel({ design, wallId, selected, dispatch, onAdd, c
   const wall = wallDims(roomSize(design), wallId)
   const found = selected ? findPlaced(design, selected) : null
   const item = found?.item.wall === wallId ? found.item : null
-  const color = design.walls[wallId].color
 
   return (
     <div className="space-y-5">
@@ -107,22 +107,10 @@ export default function WallPanel({ design, wallId, selected, dispatch, onAdd, c
       )}
       <AddButtons title="Wall décor" ids={WALL_DECOR_IDS} onAdd={onAdd} catalog={catalog} />
       <AddButtons title="Doors and windows" ids={OPENING_IDS} onAdd={onAdd} />
-      <fieldset>
-        <legend className="mb-2 text-sm font-semibold">Paint this wall</legend>
-        <div className="flex flex-wrap items-center gap-2">
-          {PAINTS.map((p) => (
-            <label key={p.id} title={p.label} className="cursor-pointer">
-              <input type="radio" name="this-wall-paint" value={p.color} checked={color === p.color} onChange={() => dispatch({ type: 'setWallColor', wall: wallId, color: p.color })} className="peer sr-only" />
-              <span className="block h-7 w-7 rounded-full border border-black/15 ring-offset-2 peer-checked:ring-2 peer-checked:ring-ink peer-focus-visible:ring-2 peer-focus-visible:ring-sage-dark" style={{ background: p.color }} />
-              <span className="sr-only">{p.label}</span>
-            </label>
-          ))}
-          <label className="ml-1 flex items-center gap-1.5 text-xs text-muted">
-            <input type="color" value={color} onChange={(e) => dispatch({ type: 'setWallColor', wall: wallId, color: e.target.value, coalesce: `paint:${wallId}` })} className="h-7 w-7 cursor-pointer rounded border border-line bg-white p-0.5" />
-            Custom
-          </label>
-        </div>
-      </fieldset>
+      <section aria-labelledby="this-wall-finish" className="space-y-2 border-t border-line pt-4">
+        <h4 id="this-wall-finish" className="text-sm font-semibold">This wall's finish</h4>
+        <WallFinishPanel walls={design.walls} wall={wallId} dispatch={dispatch} />
+      </section>
     </div>
   )
 }

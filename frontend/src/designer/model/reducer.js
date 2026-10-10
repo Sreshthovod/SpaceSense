@@ -4,7 +4,8 @@ import {
 } from './design'
 import { STYLES } from '../../data/sampleData'
 import { floorItemSpec, wallItemSpec } from './catalog'
-import { clampToRoom, findFloorSpot } from './floorPlacement'
+import { FLOOR_ROTATIONS, FLOOR_SCALE, FLOOR_SHEENS, WALLPAPERS, WALL_SHEENS } from './finishes'
+import { alignToWall, clampToRoom, findFloorSpot, settleItems } from './floorPlacement'
 import { clampToWall, findFreeSpot } from './wallPlacement'
 
 const DUPLICATE_OFFSET = 0.5
@@ -21,8 +22,21 @@ function reclampAll(design) {
   return { ...design, items: fix(design.items), openings: fix(design.openings) }
 }
 
-/** Every design edit goes through here, so undo/redo can wrap it later. Invalid actions are ignored. */
+const SIZE_LIMIT = 30 // ft; a product size larger than this is not a real piece of furniture
+const validSize = (size) => size && ['w', 'd', 'h'].every((k) => Number.isFinite(size[k]) && size[k] > 0 && size[k] <= SIZE_LIMIT)
+
+/**
+ * Every design edit goes through here (undo/redo wraps it). Invalid actions are ignored. After any
+ * change, small items re-settle onto whatever table-like surface is under them.
+ */
 export function designReducer(design, action) {
+  const next = applyAction(design, action)
+  if (next === design) return design
+  const items = settleItems(next.items)
+  return items === next.items ? next : { ...next, items }
+}
+
+function applyAction(design, action) {
   switch (action.type) {
     case 'setDimension': {
       const { key, value } = action
@@ -51,7 +65,44 @@ export function designReducer(design, action) {
       // Choosing a material resets to its colour; an explicit colour wins.
       const color = action.color ?? (action.material ? FLOOR_MATERIALS[material].color : design.floor.color)
       if (!isHexColor(color)) return design
-      return { ...design, floor: { ...design.floor, material, color } }
+      const floor = { ...design.floor, material, color }
+      if (action.rotation !== undefined) {
+        if (!FLOOR_ROTATIONS.includes(action.rotation)) return design
+        floor.rotation = action.rotation
+      }
+      if (action.scale !== undefined) {
+        if (!Number.isFinite(action.scale)) return design
+        floor.scale = Math.min(FLOOR_SCALE[1], Math.max(FLOOR_SCALE[0], action.scale))
+      }
+      if (action.sheen !== undefined) {
+        if (!FLOOR_SHEENS[action.sheen]) return design
+        floor.sheen = action.sheen
+      }
+      if (Object.keys(floor).every((k) => floor[k] === design.floor[k])) return design
+      return { ...design, floor }
+    }
+    case 'setWallFinish': {
+      // Paint (a colour and sheen) or wallpaper (a pattern in a colour), for one wall or all of them.
+      const targets = action.wall === 'all' ? WALLS : WALLS.filter((w) => w === action.wall)
+      if (!targets.length) return design
+      if (action.color !== undefined && !isHexColor(action.color)) return design
+      if (action.kind !== undefined && !['paint', 'wallpaper'].includes(action.kind)) return design
+      if (action.pattern !== undefined && action.pattern !== null && !WALLPAPERS[action.pattern]) return design
+      if (action.sheen !== undefined && !WALL_SHEENS[action.sheen]) return design
+      const walls = { ...design.walls }
+      let changed = false
+      for (const w of targets) {
+        const next = { ...walls[w] }
+        if (action.color !== undefined) next.color = action.color
+        if (action.sheen !== undefined) next.sheen = action.sheen
+        if (action.kind === 'paint') next.pattern = null
+        if (action.kind !== undefined) next.kind = action.kind
+        if (action.pattern !== undefined) next.pattern = action.pattern
+        if (next.kind === 'wallpaper' && !next.pattern) next.pattern = 'stripe'
+        if (Object.keys(next).some((k) => next[k] !== walls[w][k])) changed = true
+        walls[w] = next
+      }
+      return changed ? { ...design, walls } : design
     }
     case 'addWallItem': {
       const { uid, wall, catalogId } = action
@@ -66,7 +117,12 @@ export function designReducer(design, action) {
     case 'addFloorItem': {
       const { uid, catalogId } = action
       if (!floorItemSpec(catalogId) || !uid || findPlaced(design, uid)) return design
-      const item = findFloorSpot({ ...ITEM_DEFAULTS, productId: action.productId ?? null, uid, catalogId, wall: null, x: 0, z: 0, rotation: 0, scale: 1 }, design)
+      const fresh = { ...ITEM_DEFAULTS, productId: action.productId ?? null, uid, catalogId, wall: null, x: 0, z: 0, rotation: 0, scale: 1 }
+      if (validSize(action.size)) fresh.size = { ...action.size }
+      // A position from the placement preview is used as given (clamped); otherwise find a free spot.
+      const item = Number.isFinite(action.x) && Number.isFinite(action.z)
+        ? clampToRoom({ ...fresh, x: action.x, z: action.z, rotation: Number.isFinite(action.rotation) ? action.rotation : 0 }, roomSize(design))
+        : findFloorSpot(fresh, design)
       return { ...design, items: [...design.items, item] }
     }
     case 'updatePlaced': {
@@ -102,8 +158,30 @@ export function designReducer(design, action) {
       const found = findPlaced(design, action.uid)
       const productId = action.productId ?? null
       if (!found || found.item.locked || (productId !== null && (typeof productId !== 'string' || !productId))) return design
-      if (found.item.productId === productId) return design
-      return { ...design, [found.key]: replaceAt(design[found.key], found.index, { ...found.item, productId }) }
+      // A product with an unambiguous listed size sizes the 3D shape; otherwise the typical size stays.
+      const size = !found.item.wall && productId && validSize(action.size) ? { ...action.size } : null
+      if (found.item.productId === productId && JSON.stringify(found.item.size ?? null) === JSON.stringify(size)) return design
+      const next = { ...found.item, productId }
+      if (found.item.wall) return { ...design, [found.key]: replaceAt(design[found.key], found.index, next) }
+      if (size) next.size = size
+      else delete next.size
+      return { ...design, [found.key]: replaceAt(design[found.key], found.index, clampToRoom(next, roomSize(design))) }
+    }
+    case 'setItemColor': {
+      const found = findPlaced(design, action.uid)
+      const colors = found && floorItemSpec(found.item.catalogId)?.colors
+      if (!found || found.item.locked || !colors) return design
+      const color = action.color ?? null
+      if (color !== null && !isHexColor(color)) return design
+      if ((found.item.color ?? null) === color) return design
+      return { ...design, [found.key]: replaceAt(design[found.key], found.index, { ...found.item, color }) }
+    }
+    case 'alignToWall': {
+      const found = findPlaced(design, action.uid)
+      if (!found || found.item.wall || found.item.locked) return design
+      const next = alignToWall(found.item, roomSize(design))
+      if (next.x === found.item.x && next.z === found.item.z && next.rotation === found.item.rotation) return design
+      return { ...design, [found.key]: replaceAt(design[found.key], found.index, next) }
     }
     case 'setBudget': {
       // Budget and style only steer suggestions; placed items are never touched.

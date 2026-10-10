@@ -88,7 +88,7 @@ describe('pricingPayload', () => {
       budget_inr: 30000,
       style: 'boho',
       items: [{ uid: 's', type: 'sofa', product_id: 'ikea-kivik-sofa' }, { uid: 'p', type: 'plant' }],
-      surfaces: [{ id: 'walls', label: 'Walls: Warm white' }, { id: 'floor', label: 'Flooring: Wood' }],
+      surfaces: [{ id: 'walls', label: 'Walls: Warm white' }, { id: 'floor', label: 'Flooring: Light wood' }],
     })
     // Moving an item doesn't change the request, so it doesn't re-price.
     const moved = designReducer(d, { type: 'updatePlaced', uid: 's', changes: { x: 1 } })

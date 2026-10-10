@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
 import CameraRig from './CameraRig'
 import FloorItems from './FloorItems'
+import PlacementGhost from './PlacementGhost'
 import PlanOverlay from './PlanOverlay'
 import Room from './Room'
 import { ResourcesProvider } from './resources'
@@ -15,10 +16,10 @@ const noop = () => {}
 
 export default function DesignerScene({
   design, size, view = '3d', mode = 'select', snap = true, command, wheelSetting, reduced, label, activeWall, selected, warned,
-  onSelectWall, onSelectItem, onDeselect, onFocusItem, dispatch,
+  onSelectWall, onSelectItem, onDeselect, onFocusItem, dispatch, placing, onPlace, onCancelPlacing,
 }) {
-  // In Navigate mode clicks never select anything; the camera gets every gesture.
-  const navigate = mode === 'navigate'
+  // In Navigate mode (and while placing a new piece) clicks never select anything.
+  const navigate = mode === 'navigate' || Boolean(placing)
   const controls = useRef(null)
   // Called from pointer handlers, so the camera stops before the drag's first move event.
   const setOrbitEnabled = (on) => {
@@ -66,7 +67,7 @@ export default function DesignerScene({
         <FloorItems
           design={design}
           size={size}
-          mode={mode}
+          mode={placing ? 'navigate' : mode}
           snap={snap}
           selected={selected}
           warned={warned}
@@ -75,6 +76,7 @@ export default function DesignerScene({
           onFocus={onFocusItem || noop}
           dispatch={dispatch}
         />
+        {placing && <PlacementGhost design={design} size={size} placing={placing} snap={snap} onPlace={onPlace} onCancel={onCancelPlacing} />}
         {view === 'plan' && <PlanOverlay design={design} size={size} selected={selected} warned={warned} />}
       </ResourcesProvider>
       <CameraRig room={size} view={view} command={command} reduced={reduced} wheelSetting={wheelSetting} controlsRef={controls} />

@@ -36,7 +36,7 @@ describe('undo and redo', () => {
     const redo = screen.getByRole('button', { name: 'Redo' })
     expect(undo.disabled).toBe(true)
     add('Add three-seater sofa')
-    add('Add potted plant')
+    add('Add floor plant')
     expect(items()).toBe('sofa,plant')
 
     fireEvent.click(undo)
@@ -119,7 +119,7 @@ describe('saved designs', () => {
     expect(screen.getAllByText('Living room — Warm & cozy').length).toBeGreaterThan(0)
 
     // A second version with a plant.
-    add('Add potted plant')
+    add('Add floor plant')
     fireEvent.change(within(panel).getByLabelText('Design name'), { target: { value: 'Living room — Minimal' } })
     fireEvent.click(within(panel).getByRole('button', { name: 'Save as copy' }))
     expect(listDesigns().map((d) => d.name).sort()).toEqual(['Living room — Minimal', 'Living room — Warm & cozy'])

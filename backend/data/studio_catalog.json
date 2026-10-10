@@ -1,11 +1,5 @@
 {
-  "budget_categories": {
-    "furniture": "Furniture",
-    "lighting": "Lighting",
-    "accessories": "Accessories",
-    "wall_finishes": "Wall finishes",
-    "flooring": "Flooring"
-  },
+  "budget_categories": {"furniture": "Furniture", "lighting": "Lighting", "accessories": "Accessories", "wall_finishes": "Wall finishes", "flooring": "Flooring"},
   "types": {
     "sofa": {"category": "furniture", "products": ["ikea-klippan-sofa", "ikea-glostad-sofa", "ikea-kivik-sofa", "ikea-friheten-sofa-bed"]},
     "armchair": {"category": "furniture", "products": ["ikea-poang-armchair", "ikea-strandmon-chair"]},
@@ -16,7 +10,7 @@
     "wardrobe": {"category": "furniture", "products": ["ikea-brimnes-wardrobe"]},
     "bookshelf": {"category": "furniture", "products": ["ikea-billy-bookcase", "ikea-kallax-shelf"]},
     "rug": {"category": "accessories", "products": ["ikea-lohals-rug", "ikea-tiphede-rug", "ikea-stockholm-rug"]},
-    "plant": {"category": "accessories", "products": ["ikea-fejka-plant"]},
+    "plant": {"category": "accessories", "products": []},
     "floor-lamp": {"category": "lighting", "products": ["ikea-hektar-floor-lamp", "ikea-arstid-floor-lamp"]},
     "pouf": {"category": "accessories", "products": []},
     "painting": {"category": "accessories", "products": ["ikea-lomviken-frame"]},
@@ -24,6 +18,17 @@
     "shelf": {"category": "accessories", "products": []},
     "sconce": {"category": "lighting", "products": []},
     "panel": {"category": "wall_finishes", "products": []},
-    "curtains": {"category": "accessories", "products": ["ikea-matilda-sheer", "ikea-hallebracka-sheer", "ikea-majgull-curtains"]}
+    "curtains": {"category": "accessories", "products": ["ikea-matilda-sheer", "ikea-hallebracka-sheer", "ikea-majgull-curtains"]},
+    "dining-chair": {"category": "furniture", "products": ["ikea-teodores-chair"]},
+    "desk-chair": {"category": "furniture", "products": ["ikea-markus-chair", "ikea-flintan-chair"]},
+    "study-desk": {"category": "furniture", "products": ["ikea-micke-desk"]},
+    "bedside-table": {"category": "furniture", "products": ["ikea-brimnes-bedside"]},
+    "bunk-bed": {"category": "furniture", "products": ["ikea-vitval-bunk"]},
+    "dresser": {"category": "furniture", "products": ["ikea-malm-chest"]},
+    "tv-unit": {"category": "furniture", "products": ["ikea-besta-tv-bench"]},
+    "small-plant": {"category": "accessories", "products": ["ikea-fejka-plant"]},
+    "table-lamp": {"category": "lighting", "products": ["ikea-arstid-table-lamp"]},
+    "vase": {"category": "accessories", "products": []},
+    "clock": {"category": "accessories", "products": []}
   }
 }
