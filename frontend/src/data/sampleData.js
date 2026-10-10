@@ -1,3 +1,4 @@
+export const DIRECTIONS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west']
 export const ROOM_TYPES = ['Living room', 'Bedroom', 'Kitchen', 'Dining room', 'Home office', 'Kids room']
 
 export const STYLES = [

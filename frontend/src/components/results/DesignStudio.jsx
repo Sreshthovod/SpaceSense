@@ -149,6 +149,11 @@ export default function DesignStudio({ form, photo, originalUrl, recommendations
               <>
                 <p className="font-display text-2xl font-semibold">Here's your edited room.</p>
                 <p className="mt-2 text-sm text-muted">{result.message}</p>
+                {result.preservation && (
+                  <p className={`mt-2 rounded-xl p-2 text-xs ${result.preservation.preserved ? 'bg-sand text-muted' : 'border border-clay/40 text-clay'}`}>
+                    {result.preservation.note}
+                  </p>
+                )}
               </>
             ) : (
               <>

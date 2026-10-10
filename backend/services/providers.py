@@ -11,7 +11,7 @@ from functools import lru_cache
 from typing import Protocol
 
 from schemas import ChatReply, ChatRequest, DesignResponse, EditInstructions, RoomAnalysis, RoomRequest
-from services import gemini
+from services import gemini, vision
 from services.analysis import analyze_room, room_metrics
 from services.images import RoomImage
 
@@ -113,9 +113,13 @@ class GeminiAnalyzer:
     def analyze(self, req: RoomRequest, image: RoomImage) -> RoomAnalysis:
         metrics = room_metrics(req)
         try:
-            recs = gemini.analyze_with_gemini(self.client, self.model, req, image, metrics)
+            recs = gemini.analyze_with_gemini(
+                self.client, self.model, req, image, metrics, vision.describe_for_prompt(vision.assess_photo(image))
+            )
         except gemini.GeminiCallError as exc:
             raise ProviderError(f"Gemini analysis failed: {exc}", exc.reason) from exc
+        if recs.vastu and req.vastu:
+            metrics = {**metrics, "vastu_notes": recs.vastu}  # photo-specific notes replace the generic rule list
         return RoomAnalysis(
             method="gemini",
             photo_analyzed=True,
