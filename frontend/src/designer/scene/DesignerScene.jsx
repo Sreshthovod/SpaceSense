@@ -9,6 +9,7 @@ import PlacementGhost from './PlacementGhost'
 import PlanOverlay from './PlanOverlay'
 import Room from './Room'
 import { ResourcesProvider } from './resources'
+import useTheme from '../../hooks/useTheme'
 
 /**
  * The 3D view. Kept light for a 4 GB laptop GPU: renders only when something changes, pixel ratio
@@ -27,6 +28,7 @@ export default function DesignerScene({
 }) {
   // In Navigate mode (and while placing a new piece) clicks never select anything.
   const navigate = mode === 'navigate' || Boolean(placing)
+  const dark = useTheme().theme === 'dark'
   const controls = useRef(null)
   const [dragTick, setDragTick] = useState(0) // bumps while a piece is dragged, so its shadow follows
   // Called from pointer handlers, so the camera stops before the drag's first move event.
@@ -54,7 +56,7 @@ export default function DesignerScene({
       aria-label={label}
       role="img"
     >
-      <color attach="background" args={['#f7f5f0']} />
+      <color attach="background" args={[dark ? '#161713' : '#f7f5f0']} />
       <hemisphereLight args={['#ffffff', '#e6e1d8', LIGHT.hemisphere]} />
       <ambientLight intensity={LIGHT.ambient} />
       {/* A soft fill from the back-left so walls facing away from the sun don't go flat grey. */}

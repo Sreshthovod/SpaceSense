@@ -4,6 +4,18 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      // Saved choice first, otherwise the system setting. Runs before paint to avoid a flash of the wrong theme.
+      (function () {
+        var theme = 'light'
+        try {
+          var saved = localStorage.getItem('spacesense-theme')
+          theme = saved === 'light' || saved === 'dark' ? saved : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        } catch (e) { /* storage blocked: follow the system */ }
+        document.documentElement.dataset.theme = theme
+      })()
+    </script>
     <title>SpaceSense – Interior redesign</title>
     <meta name="description" content="Upload your room, set a style and budget in INR, and preview a redesign plan with Vastu-aware guidance." />
       <link rel="preconnect" href="https://fonts.googleapis.com" />

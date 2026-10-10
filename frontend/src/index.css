@@ -35,6 +35,44 @@
   top: 1rem;
 }
 
+/* Dark theme. Same names, new values: bg-cream is the page, text-ink the text, bg-white the card surface. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-cream: #161713;
+  --color-sand: #22241e;
+  --color-ink: #ebe7dc;
+  --color-muted: #a4a79a;
+  --color-sage: #8fa07e;
+  --color-sage-dark: #a8bb97;
+  --color-sage-light: #4a5340;
+  --color-clay: #d9946b;
+  --color-brass: #c9a85f;
+  --color-line: #373a30;
+  --color-white: #1e201b;
+  --color-red-50: #3a1d1d;
+  --color-red-200: #6b2f2f;
+  --color-red-300: #7d3737;
+  --color-red-400: #c0605f;
+  --color-red-700: #f2a1a1;
+  --color-red-800: #f7b9b9;
+}
+
+/* Sections that sit on a photo keep the light-theme colours so their text stays readable on the image. */
+:root[data-theme='dark'] .on-dark {
+  --color-cream: #f7f5f0;
+  --color-ink: #242620;
+  --color-white: #ffffff;
+  --color-sage-light: #b4bfa5;
+}
+
+body {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body { transition: none; }
+}
+
 html {
   scroll-behavior: smooth;
   scroll-padding-top: 4.5rem;

@@ -4,6 +4,7 @@ import useActiveSection from '../../hooks/useActiveSection'
 import useNavCompact from '../../hooks/useNavCompact'
 import { useAuth } from '../../context/auth'
 import { STUDIO_LINKS } from '../results/studioLinks'
+import ThemeToggle from './ThemeToggle'
 
 const links = [
   { href: '#how-it-works', id: 'how-it-works', label: 'How It Works' },
@@ -93,6 +94,7 @@ export default function Navbar({ onHome, studio, onOpenDesigner, onReset }) {
             <button type="button" onClick={onReset} className="bg-ink px-5 py-2.5 text-[0.8rem] font-medium uppercase tracking-[0.12em] text-cream transition-colors hover:bg-brass">
               Start over
             </button>
+            <ThemeToggle />
           </div>
         ) : (
           <div className="hidden items-center gap-5 lg:flex">
@@ -100,8 +102,11 @@ export default function Navbar({ onHome, studio, onOpenDesigner, onReset }) {
             <a href="#redesign" onClick={go} className="bg-ink px-5 py-2.5 text-[0.8rem] font-medium uppercase tracking-[0.12em] text-cream transition-colors hover:bg-brass">
             Design My Space
             </a>
+            <ThemeToggle />
           </div>
         )}
+        <div className="flex items-center gap-1 lg:hidden">
+        <ThemeToggle />
         <button
           ref={menuButtonRef}
           type="button"
@@ -113,6 +118,7 @@ export default function Navbar({ onHome, studio, onOpenDesigner, onReset }) {
         >
           {open ? <X aria-hidden="true" strokeWidth={1.5} className="h-6 w-6" /> : <Menu aria-hidden="true" strokeWidth={1.5} className="h-6 w-6" />}
         </button>
+        </div>
       </nav>
       {open && (
         <div id="mobile-menu" className="border-t border-line bg-cream px-5 pb-6 pt-2 lg:hidden">

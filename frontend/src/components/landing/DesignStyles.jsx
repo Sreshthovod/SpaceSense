@@ -37,8 +37,8 @@ export default function DesignStyles({ onSelectStyle, selected }) {
                 loading="lazy"
                 className="style-ken aspect-[4/3] w-full object-cover md:aspect-auto md:h-[26rem]"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/40 to-transparent" />
-              <div className="style-caption absolute inset-x-0 bottom-0 p-5 text-cream sm:p-6">
+              <div className="on-dark absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/40 to-transparent" />
+              <div className="on-dark style-caption absolute inset-x-0 bottom-0 p-5 text-cream sm:p-6">
                 <h3 className="flex items-center gap-2 font-display text-2xl font-medium sm:text-3xl">
                   {t.name}
                   <ArrowUpRight aria-hidden="true" className="h-5 w-5 text-cream/80 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
