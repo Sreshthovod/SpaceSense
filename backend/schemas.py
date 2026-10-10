@@ -1,8 +1,10 @@
+from datetime import date
 from typing import Literal
+from urllib.parse import urlparse
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from config import MAX_BUDGET_INR, MAX_DIMENSION_FT, ROOM_TYPES, STYLES
+from config import MAX_BUDGET_INR, MAX_DIMENSION_FT, PRODUCT_CATEGORIES, RETAILER_DOMAINS, ROOM_TYPES, STYLES
 
 
 class RoomRequest(BaseModel):
@@ -135,22 +137,117 @@ class ChatReply(BaseModel):
     is_ai_generated: bool
 
 
+
+
+def retailer_for_url(url: str) -> str | None:
+    """The supported retailer that owns an https URL, or None."""
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or not parsed.hostname:
+        return None
+    host = parsed.hostname.lower()
+    for name, domains in RETAILER_DOMAINS.items():
+        if any(host == d or host.endswith("." + d) for d in domains):
+            return name
+    return None
+
+
 class Product(BaseModel):
+    """One catalog entry or provider result.
+
+    A product is either *verified* (a retailer product page, the listed price read from it and
+    the date it was checked) or an *unpriced suggestion* (a generic idea with no price, which the
+    UI pairs with retailer search links). There is no "estimated" price: an unknown price stays
+    unknown, so nothing invented can end up in a budget total.
+    """
+
     model_config = ConfigDict(extra="forbid")
 
     id: str = Field(min_length=1)
     name: str = Field(min_length=1)
-    category: str = Field(min_length=1)
-    price_inr: int = Field(gt=0)
-    dimensions: str
+    category: str
     styles: list[str] = Field(min_length=1)
     room_types: list[str] = Field(min_length=1)
+    colors: list[str] = []
+    why: str = Field(min_length=1)  # why it suits the room/style; curated, not AI-written
+    quantity: int = Field(default=1, ge=1, le=12)
+    dimensions: str | None = None
+    retailer: str | None = None
+    product_url: str | None = None
+    image_url: str | None = None
+    price_inr: int | None = Field(default=None, gt=0)  # listed price per piece, incl. whatever the retailer includes
+    price_status: Literal["verified", "unknown"] = "unknown"
+    availability: Literal["in_stock", "out_of_stock"] | None = None
+    last_checked: date | None = None
+    source: str = "local_catalog"
+    search_query: str | None = None
+
+    @field_validator("category")
+    @classmethod
+    def _category(cls, v: str) -> str:
+        if v not in PRODUCT_CATEGORIES:
+            raise ValueError(f"must be one of: {', '.join(PRODUCT_CATEGORIES)}")
+        return v
+
+    @model_validator(mode="after")
+    def _no_unverified_details(self) -> "Product":
+        if self.product_url is not None:
+            owner = retailer_for_url(self.product_url)
+            if owner is None:
+                raise ValueError("product_url must be an https link on a supported retailer")
+            if self.retailer != owner:
+                raise ValueError(f"retailer must be {owner!r} for this product_url")
+        verified = self.price_status == "verified"
+        if verified and (self.price_inr is None or self.product_url is None or self.last_checked is None):
+            raise ValueError("a verified product needs price_inr, product_url and last_checked")
+        if not verified and (self.price_inr is not None or self.availability is not None or self.image_url is not None):
+            raise ValueError("price, availability and image are only allowed on verified products")
+        if self.image_url is not None and not self.image_url.startswith("https://"):
+            raise ValueError("image_url must be https")
+        if self.product_url is None and not self.search_query:
+            raise ValueError("a product without a product_url needs a search_query for retailer search links")
+        return self
+
+
+class RetailerLink(BaseModel):
+    retailer: str
+    url: str
+    kind: Literal["product", "search"]  # "search" = the retailer's own search page; results are not checked
+
+
+class ProductRecommendation(Product):
+    kind: Literal["verified_product", "suggestion"]
+    selected: bool  # part of the suggested in-budget plan
+    line_total_inr: int | None  # price_inr * quantity, or None when the price is unknown
+    links: list[RetailerLink]
+    matched_colors: list[str] = []
+    notes: list[str] = []
+
+
+class ProductRequest(RoomRequest):
+    """Room details plus, optionally, the design advice the user received, to focus the picks."""
+
+    recommendations: DesignRecommendations | None = None
+    categories: list[str] | None = Field(default=None, max_length=len(PRODUCT_CATEGORIES))
+
+    @field_validator("categories")
+    @classmethod
+    def _categories(cls, v: list[str] | None) -> list[str] | None:
+        if v is not None and any(c not in PRODUCT_CATEGORIES for c in v):
+            raise ValueError(f"each category must be one of: {', '.join(PRODUCT_CATEGORIES)}")
+        return v
 
 
 class ProductRecommendations(BaseModel):
-    source: str = "sample_catalog"
-    items: list[Product]
-    total_inr: int
+    """Totals are computed in code from verified prices only. Unpriced items never count."""
+
+    sources: list[str]
+    currency: Literal["INR"] = "INR"
+    items: list[ProductRecommendation]
     budget_inr: float
+    total_inr: int  # sum of line_total_inr over selected items
     remaining_inr: float
+    unpriced_count: int
+    shortfall_inr: int | None = None  # set when not even the cheapest relevant priced item fits
+    excluded_costs: str
     note: str | None = None
+    notices: list[str] = []  # e.g. an external provider was unavailable

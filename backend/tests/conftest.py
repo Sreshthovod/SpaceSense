@@ -7,15 +7,29 @@ from fastapi.testclient import TestClient
 import main
 from services import products, providers
 
+
+
+def verified(id, category, price, styles=("scandinavian",), rooms=("living room",), **kw):
+    """A catalog entry with a verified retailer page and price."""
+    return {"id": id, "name": id.title(), "category": category, "price_inr": price, "price_status": "verified",
+            "retailer": "IKEA India", "product_url": f"https://www.ikea.com/in/en/p/{id}-0001/",
+            "image_url": f"https://www.ikea.com/in/en/images/products/{id}.jpg", "availability": "in_stock",
+            "last_checked": "2026-10-10", "styles": list(styles), "room_types": list(rooms),
+            "why": f"Why {id} suits the room.", "search_query": id, **kw}
+
+
+def idea(id, category, styles=("scandinavian",), rooms=("living room",), **kw):
+    """An unpriced suggestion: no product page, so it gets retailer search links."""
+    return {"id": id, "name": id.title(), "category": category, "styles": list(styles), "room_types": list(rooms),
+            "why": f"Why {id} suits the room.", "search_query": f"{id} search", **kw}
+
+
 SAMPLE = [
-    {"id": "sofa", "name": "Sofa", "category": "seating", "price_inr": 30000, "dimensions": "200 cm",
-     "styles": ["scandinavian"], "room_types": ["living room"]},
-    {"id": "table", "name": "Table", "category": "tables", "price_inr": 12000, "dimensions": "100 cm",
-     "styles": ["scandinavian"], "room_types": ["living room"]},
-    {"id": "lamp", "name": "Lamp", "category": "lighting", "price_inr": 4000, "dimensions": "150 cm",
-     "styles": ["scandinavian"], "room_types": ["living room"]},
-    {"id": "desk", "name": "Desk", "category": "tables", "price_inr": 9000, "dimensions": "120 cm",
-     "styles": ["minimalist"], "room_types": ["home office"]},
+    verified("sofa", "seating", 30000, colors=["light grey"]),
+    verified("table", "tables", 12000),
+    verified("lamp", "lighting", 4000),
+    verified("desk", "tables", 9000, styles=("minimalist",), rooms=("home office",)),
+    idea("dhurrie", "rugs"),
 ]
 
 VALID = {
@@ -35,8 +49,11 @@ def isolated_env(monkeypatch):
     """Tests never use real credentials or whatever providers backend/.env selects."""
     monkeypatch.setenv("SPACESENSE_ANALYSIS_PROVIDER", "rule_based")
     monkeypatch.setenv("SPACESENSE_DESIGN_PROVIDER", "mock")
+    monkeypatch.setenv("SPACESENSE_PRODUCT_PROVIDER", "catalog")
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    caches = (providers.get_room_analyzer, providers.get_room_chat, providers.get_design_editor)
+    monkeypatch.delenv("SERPAPI_API_KEY", raising=False)
+    caches = (providers.get_room_analyzer, providers.get_room_chat, providers.get_design_editor,
+              products.get_product_sources)
     for c in caches:
         c.cache_clear()
     yield
