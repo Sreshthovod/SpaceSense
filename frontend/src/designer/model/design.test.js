@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { DEMO, SCHEMA_VERSION, createDesign, defaultView, isBehindWall, roomSize, styleLabel, wallSpecs } from './design'
+import { DEMO, SCHEMA_VERSION, createDesign, isBehindWall, roomSize, styleLabel, wallSpecs } from './design'
+import { presetPose } from './camera'
 import { designReducer } from './reducer'
 
 const form = { roomType: 'Living room', length: '16', width: '12', height: '10', style: 'scandinavian', budget: '60000' }
@@ -65,18 +66,12 @@ describe('wallSpecs', () => {
   })
 
   it('knows when the camera is behind a wall', () => {
-    const view = defaultView({ width: 12, length: 16, height: 10 })
+    const view = presetPose('perspective', { width: 12, length: 16, height: 10 }, 1.5)
     const hidden = Object.values(specs).filter((s) => isBehindWall(s, view.position)).map((s) => s.id).sort()
     expect(hidden).toEqual(['front', 'right'])
     expect(Object.values(specs).some((s) => isBehindWall(s, [0, 5, 0]))).toBe(false)
   })
 
-  it('steps the default camera back on a portrait canvas', () => {
-    const room = { width: 12, length: 16, height: 10 }
-    const dist = (v) => Math.hypot(...v.position.map((p, i) => p - v.target[i]))
-    expect(dist(defaultView(room, 0.5))).toBeCloseTo(dist(defaultView(room, 1.5)) * 2.6)
-    expect(dist(defaultView(room, 2))).toBeCloseTo(dist(defaultView(room, 1.5)))
-  })
 })
 
 describe('designReducer', () => {

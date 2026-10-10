@@ -89,7 +89,7 @@ export function FurnitureInspector({ item, dispatch, onDuplicate, onDelete, onDe
       <div className="mt-3 border-t border-line pt-3">
         <ProductPicker item={item} catalog={catalog} catalogError={catalogError} dispatch={dispatch} />
       </div>
-      <p className="mt-2 text-[11px] text-muted">Drag it in the 3D view, or use arrow keys (Shift for 1 ft). R turns it, Delete removes it.</p>
+      <p className="mt-2 text-[11px] text-muted">Switch to Move (M) to drag it, or Rotate (E) to turn it; arrow keys nudge (Shift for 1 ft), R turns 15°, Delete removes it.</p>
     </section>
   )
 }

@@ -34,7 +34,7 @@ function Measure({ x1, y1, x2, y2, label, vertical }) {
  * Front-facing, orthographic view of one wall. Drags are previewed locally and committed on release,
  * so one drag is one edit.
  */
-export default function WallEditor({ design, wallId, selected, onSelect, dispatch, onDone, newUid }) {
+export default function WallEditor({ design, wallId, selected, onSelect, dispatch, onDone, newUid, snap = true }) {
   const svgRef = useRef(null)
   const [drag, setDrag] = useState(null) // { mode, uid, start, origin, draft, guides }
   const [confirmReset, setConfirmReset] = useState(false)
@@ -66,10 +66,10 @@ export default function WallEditor({ design, wallId, selected, onSelect, dispatc
     let guides = []
     if (drag.mode === 'move') {
       const moved = { ...origin, x: origin.x + p.x - drag.start.x, y: origin.y + p.y - drag.start.y }
-      const snap = e.altKey ? { x: moved.x, y: moved.y, guides: [] } : snapPosition(moved, others, wall)
-      next = clampToWall({ ...moved, x: snap.x, y: snap.y }, wall)
+      const snapped = e.altKey || !snap ? { x: moved.x, y: moved.y, guides: [] } : snapPosition(moved, others, wall)
+      next = clampToWall({ ...moved, x: snapped.x, y: snapped.y }, wall)
       // Only show a guide if clamping didn't pull the item off it.
-      guides = snap.guides.filter((g) => (g.axis === 'x' ? next.x === snap.x : next.y === snap.y))
+      guides = snapped.guides.filter((g) => (g.axis === 'x' ? next.x === snapped.x : next.y === snapped.y))
     } else if (drag.mode === 'resize') {
       const spec = wallItemSpec(origin.catalogId)
       const [lx, ly] = rotate([p.x - origin.x, p.y - origin.y], -origin.rotation)
@@ -81,7 +81,7 @@ export default function WallEditor({ design, wallId, selected, onSelect, dispatc
         h = origin.h * k
       }
       if (spec.resize === 'width') h = origin.h
-      const round = (v) => (e.altKey ? v : Math.round(v * 4) / 4)
+      const round = (v) => (e.altKey || !snap ? v : Math.round(v * 4) / 4)
       next = clampToWall({ ...origin, w: round(w), h: spec.lockAspect ? round(w) * (origin.h / origin.w) : round(h) }, wall)
     } else if (drag.mode === 'rotate') {
       const deg = (Math.atan2(-(p.x - origin.x), p.y - origin.y) * 180) / Math.PI

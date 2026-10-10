@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowLeft, Box, History, PaintRoller, Redo2, RotateCcw, TriangleAlert, Undo2 } from 'lucide-react'
+import { ArrowLeft, Box, History, PaintRoller, Redo2, TriangleAlert, Undo2 } from 'lucide-react'
 import { STYLES } from '../data/sampleData'
 import { formatINR } from '../utils/format'
 import usePrefersReducedMotion from '../hooks/usePrefersReducedMotion'
@@ -17,6 +17,8 @@ import { readDraft, saveLastCleared } from './model/storage'
 import useDesignStore from './hooks/useDesignStore'
 import useDesignerKeys from './hooks/useDesignerKeys'
 import DesignsMenu from './layout/DesignsMenu'
+import ViewportToolbar from './layout/ViewportToolbar'
+import useGestureSetting from './hooks/useGestureSetting'
 import RoomSettings from './panels/RoomSettings'
 import WallPanel from './panels/WallPanel'
 import WallEditor from './wall/WallEditor'
@@ -75,10 +77,13 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
   const [draft, setDraft] = useState(() => readDraft()) // the previous session, offered for recovery
   const [dialogOpen, setDialogOpen] = useState(false)
   const [webgl] = useState(hasWebGL)
-  const [viewKey, setViewKey] = useState(0)
+  const [view, setView] = useState('3d') // '3d' | 'plan'
+  const [mode, setMode] = useState('select') // navigate | select | move | rotate
+  const [snap, setSnap] = useState(true)
+  const [gesture, setGesture] = useGestureSetting()
+  const [command, setCommand] = useState(null) // a camera request: { kind, ..., key }
   const [activeWall, setActiveWall] = useState(null)
   const [selected, setSelected] = useState(null)
-  const [focus, setFocus] = useState(null) // { position, radius, key } — a camera focus request
   const { catalog, error: catalogError } = useStudioCatalog()
   const budget = useBudget(design)
   const headingRef = useRef(null)
@@ -128,13 +133,21 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
     dispatch({ type: 'removePlaced', uid: selectedItem.uid })
     setSelected(null)
   }
-  // A cost row: select that object and bring it into view, staying in the 3D view.
+  const camera = (request) => setCommand((c) => ({ ...request, key: (c?.key || 0) + 1 }))
+  // Select an object and bring it into view (cost rows, double-click, F), staying in the main view.
   const focusItem = (uid) => {
     const found = findPlaced(design, uid)
     if (!found) return
     setActiveWall(null)
     setSelected(uid)
-    setFocus((f) => ({ ...itemWorldCenter(design, found.item), key: (f?.key || 0) + 1 }))
+    camera({ kind: 'focus', ...itemWorldCenter(design, found.item) })
+  }
+  const cameraRequest = (request) => {
+    if (request.kind === 'focus') {
+      if (selected) focusItem(selected)
+      return
+    }
+    camera(request)
   }
   // A suggestion is only added when the user asks; it arrives with its product already chosen.
   const addSuggestion = ({ type, product }) => {
@@ -175,7 +188,10 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
     setSelected(uid)
   }
 
-  useDesignerKeys({ design, selected, activeWall, dispatch, undo, redo, setSelected, setActiveWall, blocked: dialogOpen })
+  useDesignerKeys({
+    design, selected, activeWall, dispatch, undo, redo, setSelected, setActiveWall, setMode, blocked: dialogOpen,
+    onFocus: () => (selected ? focusItem(selected) : camera({ kind: 'fit' })),
+  })
 
   return createPortal(
     <div role="dialog" aria-modal="true" aria-labelledby="designer-heading" className="fixed inset-0 z-[60] flex flex-col bg-cream text-ink">
@@ -229,6 +245,7 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
                 dispatch={dispatch}
                 onDone={() => openWall(null)}
                 newUid={newUid}
+                snap={snap}
               />
             </div>
           )}
@@ -239,8 +256,12 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
               <DesignerScene
                 design={design}
                 size={size}
-                viewKey={viewKey}
-                focus={focus}
+                view={view}
+                mode={mode}
+                snap={snap}
+                command={command}
+                wheelSetting={gesture}
+                onFocusItem={(item) => focusItem(item.uid)}
                 reduced={reduced}
                 activeWall={activeWall}
                 selected={selected}
@@ -251,18 +272,18 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
                 dispatch={dispatch}
                 label={`3D view of a ${size.width} by ${size.length} foot room, ${size.height} feet high`}
               />
-              <div className="pointer-events-none absolute inset-x-3 top-3 flex items-start justify-between gap-2">
-                <p className="pointer-events-auto rounded-2xl bg-white/90 px-3 py-1.5 text-[11px] leading-snug text-muted shadow-sm sm:text-xs">
-                  Click a wall to decorate it · Drag furniture to move it · Drag the room to orbit · Scroll or pinch to zoom · Right-drag or two fingers to pan
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setViewKey((k) => k + 1)}
-                  className="pointer-events-auto inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold shadow-sm hover:bg-white"
-                >
-                  <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" /> Reset view
-                </button>
-              </div>
+              <ViewportToolbar
+                mode={mode}
+                setMode={setMode}
+                snap={snap}
+                setSnap={setSnap}
+                view={view}
+                setView={setView}
+                onCamera={cameraRequest}
+                canFocus={Boolean(selected)}
+                gesture={gesture}
+                setGesture={setGesture}
+              />
               {warnings.length > 0 && (
                 <ul aria-live="polite" className="absolute bottom-3 left-3 right-3 max-h-28 space-y-0.5 overflow-y-auto rounded-xl bg-white/95 px-3 py-2 text-xs shadow-sm sm:right-auto sm:max-w-md">
                   {warnings.map((w) => (

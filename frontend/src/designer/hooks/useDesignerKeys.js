@@ -3,6 +3,7 @@ import { findPlaced } from '../model/design'
 import { ROTATE_STEP } from '../model/floorPlacement'
 import { newUid } from '../model/ids'
 import { GRID } from '../model/wallPlacement'
+import { MODES } from '../model/camera'
 
 const isTyping = (t) => t instanceof HTMLElement && (t.isContentEditable || ['INPUT', 'SELECT', 'TEXTAREA'].includes(t.tagName))
 
@@ -11,12 +12,13 @@ const isTyping = (t) => t instanceof HTMLElement && (t.isContentEditable || ['IN
  *   Cmd/Ctrl+Z undo · Cmd/Ctrl+Shift+Z or Ctrl+Y redo
  *   Esc deselects, then leaves the wall · Delete/Backspace removes
  *   arrows nudge 3 in (Shift: 1 ft) · R / Shift+R turns 15° · Cmd/Ctrl+D duplicates
+ *   H / V / M / E switch mode (Navigate, Select, Move, Rotate) · F focuses the selection (or fits the room)
  * `blocked` (e.g. an open dialog) switches them all off.
  */
-export default function useDesignerKeys({ design, selected, activeWall, dispatch, undo, redo, setSelected, setActiveWall, blocked }) {
+export default function useDesignerKeys({ design, selected, activeWall, dispatch, undo, redo, setSelected, setActiveWall, setMode, onFocus, blocked }) {
   const ctx = useRef(null)
   useEffect(() => {
-    ctx.current = { design, selected, activeWall, dispatch, undo, redo, setSelected, setActiveWall, blocked }
+    ctx.current = { design, selected, activeWall, dispatch, undo, redo, setSelected, setActiveWall, setMode, onFocus, blocked }
   })
 
   useEffect(() => {
@@ -35,6 +37,18 @@ export default function useDesignerKeys({ design, selected, activeWall, dispatch
         e.preventDefault()
         c.redo()
         return
+      }
+      if (!mod && !e.altKey) {
+        const m = MODES.find((x) => x.key === key)
+        if (m && c.setMode) {
+          c.setMode(m.id)
+          return
+        }
+        if (key === 'f' && c.onFocus) {
+          e.preventDefault()
+          c.onFocus()
+          return
+        }
       }
       if (e.key === 'Escape') {
         if (c.selected) c.setSelected(null)

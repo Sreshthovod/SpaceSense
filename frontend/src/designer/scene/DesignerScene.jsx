@@ -1,7 +1,8 @@
 import { useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
-import Controls from './Controls'
+import CameraRig from './CameraRig'
 import FloorItems from './FloorItems'
+import PlanOverlay from './PlanOverlay'
 import Room from './Room'
 import { ResourcesProvider } from './resources'
 
@@ -10,9 +11,14 @@ import { ResourcesProvider } from './resources'
  * capped at 1.5, one shadow-casting light with a 1024px shadow map, flat materials and no textures.
  * `flat` turns off tone mapping so painted walls match the swatch the user picked.
  */
+const noop = () => {}
+
 export default function DesignerScene({
-  design, size, viewKey, focus, reduced, label, activeWall, selected, warned, onSelectWall, onSelectItem, onDeselect, dispatch,
+  design, size, view = '3d', mode = 'select', snap = true, command, wheelSetting, reduced, label, activeWall, selected, warned,
+  onSelectWall, onSelectItem, onDeselect, onFocusItem, dispatch,
 }) {
+  // In Navigate mode clicks never select anything; the camera gets every gesture.
+  const navigate = mode === 'navigate'
   const controls = useRef(null)
   // Called from pointer handlers, so the camera stops before the drag's first move event.
   const setOrbitEnabled = (on) => {
@@ -48,10 +54,30 @@ export default function DesignerScene({
         shadow-bias={-0.0005}
       />
       <ResourcesProvider>
-        <Room size={size} design={design} activeWall={activeWall} selected={selected} onSelectWall={onSelectWall} onSelectItem={onSelectItem} onDeselect={onDeselect} />
-        <FloorItems design={design} size={size} selected={selected} warned={warned} setOrbitEnabled={setOrbitEnabled} onSelect={onSelectItem} dispatch={dispatch} />
+        <Room
+          size={size}
+          design={design}
+          activeWall={activeWall}
+          selected={selected}
+          onSelectWall={navigate ? noop : onSelectWall}
+          onSelectItem={navigate ? noop : onSelectItem}
+          onDeselect={navigate ? noop : onDeselect}
+        />
+        <FloorItems
+          design={design}
+          size={size}
+          mode={mode}
+          snap={snap}
+          selected={selected}
+          warned={warned}
+          setOrbitEnabled={setOrbitEnabled}
+          onSelect={onSelectItem}
+          onFocus={onFocusItem || noop}
+          dispatch={dispatch}
+        />
+        {view === 'plan' && <PlanOverlay design={design} size={size} selected={selected} warned={warned} />}
       </ResourcesProvider>
-      <Controls room={size} viewKey={viewKey} focus={focus} reduced={reduced} controlsRef={controls} />
+      <CameraRig room={size} view={view} command={command} reduced={reduced} wheelSetting={wheelSetting} controlsRef={controls} />
     </Canvas>
   )
 }

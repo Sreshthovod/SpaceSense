@@ -6,8 +6,13 @@ const webgl = vi.hoisted(() => ({ available: false }))
 vi.mock('./webgl', () => ({ hasWebGL: () => webgl.available }))
 // jsdom has no WebGL, so the canvas is replaced by a stub that shows what it was given.
 vi.mock('./scene/DesignerScene', () => ({
-  default: ({ design, label, selected, focus }) => (
-    <div data-testid="scene" aria-label={label} data-floor={design.floor.material} data-selected={selected || ''} data-focus={focus ? focus.position.map((v) => v.toFixed(1)).join(',') : ''} />
+  default: ({ design, label, selected, command, mode, view, snap, wheelSetting }) => (
+    <div
+      data-testid="scene" aria-label={label} data-floor={design.floor.material} data-selected={selected || ''}
+      data-focus={command?.kind === 'focus' ? command.position.map((v) => v.toFixed(1)).join(',') : ''}
+      data-command={command ? `${command.kind}:${command.name || ''}:${command.key}` : ''}
+      data-mode={mode} data-view={view} data-snap={String(snap)} data-wheel={wheelSetting} data-items={design.items.length}
+    />
   ),
 }))
 
@@ -179,5 +184,64 @@ describe('RoomDesigner', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add three-seater sofa' }))
     expect(screen.getByText('Product prices are unavailable right now.')).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Three-seater sofa' })).toBeTruthy()
+  })
+
+  it('switches modes and views from the toolbar and keyboard without touching the design', () => {
+    webgl.available = true
+    localStorage.clear()
+    render(<RoomDesigner form={form} onClose={() => {}} />)
+    const scene = () => screen.getByTestId('scene').dataset
+    fireEvent.click(screen.getByRole('button', { name: 'Add three-seater sofa' }))
+    expect(scene().mode).toBe('select')
+    expect(screen.getByRole('button', { name: 'Select' }).getAttribute('aria-pressed')).toBe('true')
+    for (const [key, mode] of [['h', 'navigate'], ['m', 'move'], ['e', 'rotate'], ['v', 'select']]) {
+      fireEvent.keyDown(window, { key })
+      expect(scene().mode).toBe(mode)
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Move' }))
+    expect(scene().mode).toBe('move')
+    expect(screen.getByTestId('mode-hint').textContent).toMatch('Drag an object to move it')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Plan' }))
+    expect(scene().view).toBe('plan')
+    fireEvent.click(screen.getByRole('button', { name: 'Camera' }))
+    expect(screen.getByRole('button', { name: 'Front view' }).disabled).toBe(true) // presets are for the 3D view
+    fireEvent.click(screen.getByRole('button', { name: '3D' }))
+    for (let i = 0; i < 20; i++) fireEvent.click(screen.getByRole('button', { name: i % 2 ? '3D' : 'Plan' }))
+    expect(scene().items).toBe('1')
+    expect(screen.getByRole('button', { name: 'Undo' }).disabled).toBe(false) // only the sofa
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(screen.getByRole('button', { name: 'Undo' }).disabled).toBe(true)
+
+    fireEvent.click(screen.getByRole('button', { name: /Snap on/ }))
+    expect(scene().snap).toBe('false')
+  })
+
+  it('sends camera commands: presets, fit, and F to focus the selection', () => {
+    webgl.available = true
+    render(<RoomDesigner form={form} onClose={() => {}} />)
+    const command = () => screen.getByTestId('scene').dataset.command
+    fireEvent.click(screen.getByRole('button', { name: 'Camera' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Top view' }))
+    expect(command()).toMatch(/^preset:top:/)
+    fireEvent.keyDown(window, { key: 'f' })
+    expect(command()).toMatch(/^fit::/) // nothing selected: frame the room
+    fireEvent.click(screen.getByRole('button', { name: 'Add three-seater sofa' }))
+    fireEvent.keyDown(window, { key: 'f' })
+    expect(command()).toMatch(/^focus::/)
+    expect(screen.getByTestId('scene').dataset.focus).toMatch(/^0\.0,1\.4,/)
+  })
+
+  it('remembers the scroll-gesture setting', () => {
+    webgl.available = true
+    localStorage.clear()
+    const { unmount } = render(<RoomDesigner form={form} onClose={() => {}} />)
+    expect(screen.getByTestId('scene').dataset.wheel).toBe('auto')
+    fireEvent.click(screen.getByRole('button', { name: 'Help' }))
+    fireEvent.click(screen.getByLabelText('Always pan'))
+    expect(screen.getByTestId('scene').dataset.wheel).toBe('pan')
+    unmount()
+    render(<RoomDesigner form={form} onClose={() => {}} />)
+    expect(screen.getByTestId('scene').dataset.wheel).toBe('pan')
   })
 })

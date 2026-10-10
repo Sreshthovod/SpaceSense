@@ -131,22 +131,6 @@ export function isBehindWall(spec, [x, , z]) {
   return (x - cx) * nx + (z - cz) * nz < 0
 }
 
-/**
- * A starting camera that looks into the room over the front-right corner. On a narrow (portrait)
- * canvas it steps back so the whole room still fits across the screen.
- */
-export function defaultView({ width, length, height }, aspect = 1.5) {
-  const reach = Math.max(width, length)
-  const target = [0, height * 0.3, 0]
-  const base = [width * 0.8 + reach * 0.15, height * 1.7 + reach * 0.25, length * 0.9 + reach * 0.45]
-  const back = Math.max(1, 1.3 / aspect)
-  return {
-    position: base.map((v, i) => target[i] + (v - target[i]) * back),
-    target,
-    minDistance: 3,
-    maxDistance: reach * 3 * back,
-  }
-}
 
 /** Width and height of one wall as seen from inside the room. */
 export function wallDims(size, wallId) {

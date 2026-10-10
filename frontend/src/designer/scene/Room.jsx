@@ -3,16 +3,31 @@ import { useFrame } from '@react-three/fiber'
 import { FLOOR_MATERIALS, WALL_THICKNESS, isBehindWall, onWall, wallSpecs } from '../model/design'
 import WallItemMesh from './WallItemMesh'
 
+const HIDDEN_LAYER = 31
+
 /**
  * A wall and everything attached to it, in the wall's local space (origin on the inner face at floor
  * level, centred along the wall; +z points into the room).
  */
 function Wall({ spec, color, items, active, selected, onSelectWall, onSelectItem }) {
   const ref = useRef(null)
+  const cutAway = useRef(false)
   const [hovered, setHovered] = useState(false)
-  // Cut-away view: hide any wall (and its items) standing between the camera and the room.
+  // Cut-away view: a wall (and its items) standing between the camera and the room moves to a layer
+  // the camera doesn't render and the pointer raycaster doesn't test, so it can't be seen OR clicked.
+  // (Raycasting ignores `visible`, so hiding alone would let an invisible wall swallow clicks.)
   useFrame(({ camera }) => {
-    if (ref.current) ref.current.visible = !isBehindWall(spec, camera.position.toArray())
+    const hide = isBehindWall(spec, camera.position.toArray())
+    if (!ref.current || (!hide && !cutAway.current)) return
+    // While hidden, re-apply every frame so items added to this wall are hidden too (a few objects).
+    ref.current.traverse((o) => o.layers.set(hide ? HIDDEN_LAYER : 0))
+    if (hide !== cutAway.current) {
+      cutAway.current = hide
+      if (hide && hovered) {
+        setHovered(false)
+        document.body.style.cursor = ''
+      }
+    }
   })
   const [x, , z] = spec.center
   const highlight = active ? 0.18 : hovered ? 0.08 : 0
@@ -32,7 +47,7 @@ function Wall({ spec, color, items, active, selected, onSelectWall, onSelectItem
         <boxGeometry args={[spec.span + WALL_THICKNESS * 2, spec.height, WALL_THICKNESS]} />
         <meshStandardMaterial color={color} roughness={0.9} emissive="#78836a" emissiveIntensity={highlight} />
       </mesh>
-      {items.map((item) => (
+      {items.filter((item) => !item.hidden).map((item) => (
         <WallItemMesh key={item.uid} item={item} span={spec.span} selected={item.uid === selected} onSelect={onSelectItem} />
       ))}
     </group>
