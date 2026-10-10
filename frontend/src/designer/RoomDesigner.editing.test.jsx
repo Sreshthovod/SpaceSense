@@ -13,6 +13,9 @@ vi.mock('./scene/DesignerScene', () => ({
 }))
 const WARDROBE = { product_id: 'ikea-brimnes-wardrobe', name: 'BRIMNES Wardrobe with 2 doors - white', retailer: 'IKEA India', product_url: 'https://www.ikea.com/in/en/p/brimnes/', image_url: null, price_inr: 13990, last_checked: '2026-10-10', listed_size: '78x50x190 cm', availability: 'in_stock', styles: [] }
 vi.mock('../services/api', () => ({
+  // The AI-arrange panel looks up which providers are set up; these tests never use it.
+  getImageProviders: () => new Promise(() => {}),
+  aiLayout: () => new Promise(() => {}),
   getStudioCatalog: () => Promise.resolve({ currency: 'INR', budget_categories: {}, excluded_costs: '', types: { wardrobe: { category: 'furniture', products: [WARDROBE] } } }),
   priceDesign: () => new Promise(() => {}),
 }))

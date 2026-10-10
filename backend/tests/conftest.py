@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 import main
 import routes_auth
 from services import auth, imagegen, products, providers
+from services import studio as studio_service
 
 
 
@@ -53,6 +54,7 @@ def isolated_env(monkeypatch, tmp_path):
     for var in ("SMTP_HOST", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "SPACESENSE_COOKIE_SECURE"):
         monkeypatch.delenv(var, raising=False)
     auth.reset_throttles()
+    studio_service.reset_layout_limiter()
     routes_auth.reset_limiters()
     monkeypatch.setenv("SPACESENSE_ANALYSIS_PROVIDER", "rule_based")
     monkeypatch.setenv("SPACESENSE_DESIGN_PROVIDER", "mock")

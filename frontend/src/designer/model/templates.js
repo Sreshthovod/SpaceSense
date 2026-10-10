@@ -7,7 +7,7 @@
 import { FABRICS, floorItemSpec } from './catalog'
 import { ITEM_DEFAULTS, WALLS, createDesign, defaultFloor, defaultWall, roomSize } from './design'
 import { designReducer } from './reducer'
-import { clampToRoom, floorWarnings, settleItems } from './floorPlacement'
+import { alignToWall, clampToRoom, findFloorSpot, floorWarnings, footprint, itemsOverlap, settleItems } from './floorPlacement'
 import { wallWarnings } from './wallPlacement'
 
 /**
@@ -199,6 +199,20 @@ const LAYOUTS = {
 
 export const TEMPLATE_ROOM_TYPES = Object.keys(LAYOUTS)
 
+/**
+ * The plain starter layout for a room type and size, in the shape an AI layout comes back in
+ * (`{floor: [{type, x, z, rotation}], wall: [{type, wall, along, y?}]}`). Shown to the model as an example.
+ */
+export function exampleLayout(roomType, size) {
+  const plan = LAYOUTS[roomType]?.(size)
+  if (!plan) return null
+  const r = (n) => Math.round(n * 100) / 100
+  return {
+    floor: plan.floor.map((e) => ({ type: e.id, x: r(e.x), z: r(e.z), rotation: e.rotation })),
+    wall: plan.wall.map((e) => ({ type: e.id, wall: e.wall, along: r(e.along), ...(e.y !== undefined ? { y: r(e.y) } : {}) })),
+  }
+}
+
 /** The finishes of a style on a fresh design: walls, accent wall and floor. */
 function applyFinishes(design, preset, accent) {
   const walls = Object.fromEntries(WALLS.map((w) => [w, defaultWall(preset.walls)]))
@@ -216,6 +230,143 @@ export function emptyRoom(current) {
 }
 
 /**
+ * Adds wall pieces one at a time through the reducer. A piece that can't be added, or that would
+ * overlap something already on its wall, is left out (and named in `leftOut`).
+ * Entries: `{id, wall, along, y?, w?, h?}`.
+ */
+export function placeWallEntries(design, entries, newUid) {
+  let current = design
+  let placed = 0
+  const leftOut = []
+  for (const entry of entries) {
+    const uid = newUid()
+    const added = designReducer(current, { type: 'addWallItem', uid, wall: entry.wall, catalogId: entry.id })
+    if (added === current) { leftOut.push(entry.id); continue }
+    const changes = { x: entry.along }
+    for (const k of ['y', 'w', 'h']) if (entry[k] !== undefined) changes[k] = entry[k]
+    const moved = designReducer(added, { type: 'updatePlaced', uid, changes })
+    const sameWall = [...moved.openings, ...moved.items].filter((i) => i.wall === entry.wall)
+    if (wallWarnings(sameWall).some((w) => w.kind === 'overlap' && w.ids.includes(uid))) { leftOut.push(entry.id); continue }
+    current = moved
+    placed += 1
+  }
+  return { design: current, placed, leftOut }
+}
+
+/** How close (ft) a wall-backed piece must already be to a wall for an AI layout to snap it flush. */
+const SNAP_TO_WALL_FT = 2.5
+
+// Pieces that belong close together: a chair tucks under its table, a bedside table sits by its bed.
+const TUCKED = ['dining-chair', 'desk-chair', 'bar-stool', 'pouf', 'bean-bag']
+const BED_IDS = ['bed', 'single-bed', 'bunk-bed']
+
+/** The walkway (ft) to leave between two floor pieces: none where one sits on or under the other. */
+function walkway(a, b) {
+  const sa = floorItemSpec(a.catalogId)
+  const sb = floorItemSpec(b.catalogId)
+  if (sa.layer === 'rug' || sb.layer === 'rug' || sa.onSurface || sb.onSurface) return 0
+  if (TUCKED.includes(a.catalogId) || TUCKED.includes(b.catalogId)) return 0.25
+  if ((a.catalogId === 'bedside-table' && BED_IDS.includes(b.catalogId)) || (b.catalogId === 'bedside-table' && BED_IDS.includes(a.catalogId))) return 0.15
+  const small = (s) => Math.max(s.size.w, s.size.d) < 2.2
+  return small(sa) || small(sb) ? 0.5 : 1
+}
+
+/** True when a piece leaves less than `scale` times the usual walkway to something already placed. */
+function tooClose(candidate, items, scale) {
+  const f = footprint(candidate)
+  for (const other of items) {
+    if (other.wall || other.hidden) continue
+    const gap = walkway(candidate, other) * scale
+    if (gap > 0 && itemsOverlap({ ...candidate, scale: 1, size: { w: f.w + 2 * gap, d: f.d + 2 * gap, h: f.h } }, other)) return true
+  }
+  return false
+}
+
+/** How far (ft) a rejected piece may be moved to find room, and the grid it tries. */
+const NUDGE_RADIUS_FT = 3
+const NUDGE_STEP_FT = 0.5
+const NUDGE_OFFSETS = (() => {
+  const offsets = []
+  for (let dx = -NUDGE_RADIUS_FT; dx <= NUDGE_RADIUS_FT; dx += NUDGE_STEP_FT) {
+    for (let dz = -NUDGE_RADIUS_FT; dz <= NUDGE_RADIUS_FT; dz += NUDGE_STEP_FT) {
+      if (dx || dz) offsets.push([dx, dz])
+    }
+  }
+  return offsets.sort((a, b) => Math.hypot(...a) - Math.hypot(...b))
+})()
+
+/**
+ * Adds floor pieces, clamped into the room. A piece that would overlap, block the door or hit wall
+ * décor is left out, and so is a table-top piece with no table under it.
+ * Entries: `{id, x, z, rotation, scale?, tint?, snapToWall?, nudge?}`. `snapToWall` pushes a wall-backed piece
+ * flush against the wall it is already next to, so a layout that is a few inches off still sits right.
+ * `clearance` (1 for normal walkways) asks for breathing room around the piece: it looks for a spot that
+ * leaves it first, and only if there is none settles for any spot the placement rules accept.
+ * `nudge` lets a piece that doesn't fit where it was put move to the nearest free spot within a few feet
+ * (counted in `moved`) instead of being dropped, and a table-top piece with no table under it goes onto any
+ * free table (so a lamp follows its table when that table had to move). With no table it is still left out.
+ */
+export function placeFloorEntries(design, entries, preset, newUid) {
+  let current = design
+  const size = roomSize(design)
+  let placed = 0
+  let moved = 0
+  const leftOut = []
+  for (const entry of entries) {
+    const spec = floorItemSpec(entry.id)
+    const tint = entry.tint && spec.colors ? preset[entry.tint] : null
+    const uid = newUid()
+    let item = clampToRoom({
+      ...ITEM_DEFAULTS, uid, catalogId: entry.id, wall: null, x: entry.x, z: entry.z, rotation: entry.rotation, scale: entry.scale || 1,
+      color: tint && FABRICS.includes(tint) ? tint : null,
+    }, size)
+    if (entry.snapToWall && spec.againstWall) {
+      const flush = alignToWall(item, size)
+      if (Math.abs(flush.x - item.x) + Math.abs(flush.z - item.z) <= SNAP_TO_WALL_FT) item = flush
+    }
+    // Returns the design with this piece added, or null when it floats or breaks a placement rule.
+    const attempt = (candidate) => {
+      const trial = { ...current, items: settleItems([...current.items, candidate]) }
+      // Small pieces meant for a table top are left out when there's no table under them.
+      const settled = trial.items[trial.items.length - 1]
+      if (spec.onSurface && !settled.elevation) return { trial: null, floating: true }
+      return { trial: floorWarnings(trial, uid).length ? null : trial, floating: false }
+    }
+    // Where it was put, then (if allowed) the nearest spot that works. `roomy` also demands the walkway.
+    const search = (roomy) => {
+      const ok = (candidate) => {
+        const { trial } = attempt(candidate)
+        return trial && !(roomy && tooClose(candidate, current.items, entry.clearance)) ? trial : null
+      }
+      const here = ok(item)
+      if (here) return { trial: here, shifted: false }
+      if (!entry.nudge) return null
+      for (const [dx, dz] of NUDGE_OFFSETS) {
+        const candidate = clampToRoom({ ...item, x: item.x + dx, z: item.z + dz }, size)
+        if (candidate.x === item.x && candidate.z === item.z) continue
+        const trial = ok(candidate)
+        if (trial) return { trial, shifted: true }
+      }
+      return null
+    }
+    let found = null
+    if (attempt(item).floating) {
+      if (entry.nudge) {
+        const trial = attempt(findFloorSpot(item, current)).trial // a free table top, if there is one
+        if (trial) found = { trial, shifted: true }
+      }
+    } else {
+      found = (entry.clearance && search(true)) || search(false)
+    }
+    if (!found) { leftOut.push(entry.id); continue }
+    current = found.trial
+    placed += 1
+    if (found.shifted) moved += 1
+  }
+  return { design: current, placed, moved, leftOut }
+}
+
+/**
  * A furnished starter design for a room type in a style, sized to the current room. Returns the
  * design and how many pieces were left out because they didn't fit.
  */
@@ -224,39 +375,14 @@ export function buildTemplate(current, roomType, styleId, newUid) {
   const preset = STYLE_PRESETS[styleId] || STYLE_PRESETS.scandinavian
   if (!layout) return { design: emptyRoom(current), placed: 0, skipped: 0 }
   const plan = layout(roomSize(current))
-  let design = applyFinishes({ ...emptyRoom(current), style: styleId }, preset, plan.accent)
-  const size = roomSize(design)
-  let placed = 0
-  let skipped = 0
+  const base = applyFinishes({ ...emptyRoom(current), style: styleId }, preset, plan.accent)
+  const walls = placeWallEntries(base, plan.wall, newUid)
+  const floor = placeFloorEntries(walls.design, plan.floor, preset, newUid)
+  return { design: floor.design, placed: walls.placed + floor.placed, skipped: walls.leftOut.length + floor.leftOut.length }
+}
 
-  for (const entry of plan.wall) {
-    const uid = newUid()
-    const added = designReducer(design, { type: 'addWallItem', uid, wall: entry.wall, catalogId: entry.id })
-    if (added === design) { skipped += 1; continue }
-    const changes = { x: entry.along }
-    for (const k of ['y', 'w', 'h']) if (entry[k] !== undefined) changes[k] = entry[k]
-    const moved = designReducer(added, { type: 'updatePlaced', uid, changes })
-    const sameWall = [...moved.openings, ...moved.items].filter((i) => i.wall === entry.wall)
-    if (wallWarnings(sameWall).some((w) => w.kind === 'overlap' && w.ids.includes(uid))) { skipped += 1; continue }
-    design = moved
-    placed += 1
-  }
-
-  for (const entry of plan.floor) {
-    const spec = floorItemSpec(entry.id)
-    const tint = entry.tint && spec.colors ? preset[entry.tint] : null
-    const uid = newUid()
-    const item = clampToRoom({
-      ...ITEM_DEFAULTS, uid, catalogId: entry.id, wall: null, x: entry.x, z: entry.z, rotation: entry.rotation, scale: entry.scale || 1,
-      color: tint && FABRICS.includes(tint) ? tint : null,
-    }, size)
-    const trial = { ...design, items: settleItems([...design.items, item]) }
-    // Small pieces meant for a table top are left out when there's no table under them.
-    const settled = trial.items[trial.items.length - 1]
-    const floating = spec.onSurface && !settled.elevation
-    if (floating || floorWarnings(trial).some((w) => w.ids.includes(uid))) { skipped += 1; continue }
-    design = trial
-    placed += 1
-  }
-  return { design, placed, skipped }
+/** A starting design with a style's finishes (walls, accent, floor) and nothing placed. Used by AI layouts. */
+export function finishedRoom(current, styleId, accentWall = null) {
+  const preset = STYLE_PRESETS[styleId] || STYLE_PRESETS.scandinavian
+  return { design: applyFinishes({ ...emptyRoom(current), style: styleId }, preset, accentWall), preset }
 }

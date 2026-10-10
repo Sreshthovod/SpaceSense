@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { BufferGeometry, CanvasTexture, Float32BufferAttribute, LineBasicMaterial, SRGBColorSpace } from 'three'
 import { WALL_THICKNESS } from '../model/design'
-import { itemCorners } from '../model/floorPlacement'
+import { footprintOutline } from '../model/floorPlacement'
 import { formatFeet } from '../model/wallPlacement'
 
 const TOP = 60 // above any furniture; drawn without depth testing so it's always visible
@@ -93,7 +93,7 @@ export default function PlanOverlay({ design, size, selected, warned }) {
       {design.items.filter((i) => !i.wall && !i.hidden).map((item) => (
         <Outline
           key={item.uid}
-          points={itemCorners(item)}
+          points={footprintOutline(item)}
           color={warned.has(item.uid) ? '#c0392b' : item.uid === selected ? '#5b6650' : '#242620'}
         />
       ))}

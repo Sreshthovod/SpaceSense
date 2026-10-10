@@ -1,5 +1,6 @@
 import Part from './Part'
 import { useResources } from './useResources'
+import { L_SOFA_CHAISE, L_SOFA_SEAT } from '../model/catalog'
 
 const WOOD = '#8b6a45'
 const DARK = '#3b2f2a'
@@ -385,8 +386,8 @@ export default function FloorItemShape({ catalogId, w, d, h, color }) {
       const arm = 0.45
       const back = 0.75
       const seatTop = h * 0.36
-      const seatD = 3.2
-      const chaise = 2.8
+      const seatD = d * L_SOFA_SEAT // the same proportions the collision shape uses
+      const chaise = w * L_SOFA_CHAISE
       return (
         <>
           <Part position={[0, 0.15, -d / 2 + seatD / 2]} scale={[w, 0.3, seatD]} mat={material(DARK)} />

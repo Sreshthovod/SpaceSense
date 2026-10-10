@@ -22,7 +22,9 @@ from schemas import (
     ProductRequest,
     RoomAnalysis,
     RoomRequest,
+    LayoutOptions,
     StudioCatalog,
+    StudioLayout,
     StudioPrice,
     StudioPriceRequest,
 )
@@ -33,7 +35,14 @@ from services import vision
 from services.products import CATALOG_PATH, CatalogError, get_product_sources, load_catalog, recommend
 from services import providers as providers_module
 from services.providers import ProviderConfigError, ProviderError, get_design_editor, get_room_analyzer, get_room_chat
-from services.studio import STUDIO_CATALOG_PATH, StudioDesignError, load_mapping, price_design, studio_catalog
+from services.studio import (
+    STUDIO_CATALOG_PATH,
+    StudioDesignError,
+    layout_rate_limited,
+    load_mapping,
+    price_design,
+    studio_catalog,
+)
 
 logger = logging.getLogger("spacesense")
 
@@ -265,6 +274,37 @@ def studio_catalog_endpoint():
 def studio_price(req: StudioPriceRequest):
     """Price a 3D design. Only types and product ids are accepted; all prices come from the catalog."""
     return price_design(req)
+
+
+@app.post("/studio/ai-layout", response_model=StudioLayout)
+async def studio_ai_layout(
+    request: Request,
+    room: str = Form(...),
+    layout: str = Form(...),
+    photo: UploadFile | None = File(None),
+):
+    """Propose where designer pieces go, from the room brief and optionally a photo.
+
+    Text out only (no image generation), so it runs on a free Gemini key. The answer is a proposal:
+    the designer re-checks every piece before placing it.
+    """
+    wait = layout_rate_limited(request.client.host if request.client else "unknown")
+    if wait:
+        response = error(429, "rate_limited", f"Too many layout requests. Try again in {int(wait) + 1} seconds.")
+        response.headers["Retry-After"] = str(int(wait) + 1)
+        return response
+    req = parse_json_field(RoomRequest, room, "room")
+    options = parse_json_field(LayoutOptions, layout, "layout")
+    image = await read_photo(photo) if photo is not None else None
+    try:
+        arranger = providers_module.GeminiLayout()
+    except ProviderConfigError:
+        return error(503, "layout_unavailable", "AI arrange needs a Gemini API key on the server (GEMINI_API_KEY).")
+    try:
+        return await run_in_threadpool(arranger.arrange, req, image, options)
+    except ProviderError as exc:
+        logger.error("Layout provider error (%s): %s", exc.reason, exc)
+        return provider_failure(exc, "layout_failed", "The layout service failed. Please try again.")
 
 
 IMAGEGEN_KEYS = {"cloudflare": "CF_API_TOKEN and CF_ACCOUNT_ID", "gemini": "GEMINI_API_KEY"}

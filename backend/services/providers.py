@@ -10,7 +10,7 @@ import os
 from functools import lru_cache
 from typing import Protocol
 
-from schemas import ChatReply, ChatRequest, DesignResponse, EditInstructions, RoomAnalysis, RoomRequest
+from schemas import ChatReply, ChatRequest, DesignResponse, EditInstructions, LayoutOptions, RoomAnalysis, RoomRequest, StudioLayout
 from services import gemini, vision
 from services.analysis import analyze_room, room_metrics
 from services.images import RoomImage
@@ -142,6 +142,26 @@ class GeminiChat:
         except gemini.GeminiCallError as exc:
             raise ProviderError(f"Gemini chat failed: {exc}", exc.reason) from exc
         return ChatReply(reply=text, provider=self.name, is_ai_generated=True)
+
+
+class GeminiLayout:
+    """Proposes where designer pieces go. Text out only, so it works on the free Gemini tier."""
+
+    name = "gemini"
+
+    def __init__(self, client=None, model: str | None = None):
+        self.client = client or _gemini_client()
+        self.model = (
+            model
+            or os.getenv("SPACESENSE_GEMINI_LAYOUT_MODEL")
+            or os.getenv("SPACESENSE_GEMINI_ANALYSIS_MODEL", DEFAULT_GEMINI_ANALYSIS_MODEL)
+        )
+
+    def arrange(self, req: RoomRequest, image: RoomImage | None, options: LayoutOptions) -> StudioLayout:
+        try:
+            return gemini.layout_with_gemini(self.client, self.model, req, image, options)
+        except gemini.GeminiCallError as exc:
+            raise ProviderError(f"Gemini layout failed: {exc}", exc.reason) from exc
 
 
 class GeminiImageEditor:

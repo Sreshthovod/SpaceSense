@@ -70,6 +70,62 @@ export const itemCorners = (item) => {
   return corners(item.x, item.z, w, d, item.rotation)
 }
 
+const ROUND_SIDES = 16
+
+// Items are never changed in place (every edit makes a new object), so a shape is worked out once per item.
+const polygonCache = new WeakMap()
+
+/** A point given in an item's own frame (x right, z towards its front) turned into room space. */
+function toRoom(item, [lx, lz]) {
+  const c = Math.cos(rad(item.rotation))
+  const s = Math.sin(rad(item.rotation))
+  return [item.x + lx * c + lz * s, item.z - lx * s + lz * c]
+}
+
+export const isRound = (catalogId) => floorItemSpec(catalogId)?.shape === 'round'
+
+/** The rectangles an item's footprint is made of, in its own frame: one for most pieces, two for an L. */
+export function localParts(catalogId, w, d) {
+  const shape = floorItemSpec(catalogId)?.shape
+  if (shape?.parts) {
+    return shape.parts.map((p) => ({ cx: ((p.x0 + p.x1) / 2) * w, cz: ((p.z0 + p.z1) / 2) * d, w: (p.x1 - p.x0) * w, d: (p.z1 - p.z0) * d }))
+  }
+  return [{ cx: 0, cz: 0, w, d }]
+}
+
+/**
+ * The convex pieces of an item's real floor shape, as lists of [x, z] corners in room space: a rectangle for
+ * most things, an inscribed polygon for round ones, two rectangles for the L-shaped sofa. This is what
+ * collisions use, so an L doesn't claim its empty corner and a round table doesn't claim its square corners.
+ */
+export function footprintPolygons(item) {
+  const cached = polygonCache.get(item)
+  if (cached) return cached
+  const { w, d } = footprint(item)
+  const shape = floorItemSpec(item.catalogId)?.shape
+  let polygons
+  if (shape === 'round') {
+    polygons = [Array.from({ length: ROUND_SIDES }, (_, i) => {
+      const a = (i / ROUND_SIDES) * Math.PI * 2
+      return toRoom(item, [(Math.cos(a) * w) / 2, (Math.sin(a) * d) / 2])
+    })]
+  } else if (shape?.parts) {
+    polygons = localParts(item.catalogId, w, d).map((p) =>
+      [[-p.w / 2, -p.d / 2], [p.w / 2, -p.d / 2], [p.w / 2, p.d / 2], [-p.w / 2, p.d / 2]].map(([x, z]) => toRoom(item, [p.cx + x, p.cz + z])))
+  } else {
+    polygons = [itemCorners(item)]
+  }
+  polygonCache.set(item, polygons)
+  return polygons
+}
+
+/** The outline to draw for an item (one loop, concave for an L), as [x, z] corners in room space. */
+export function footprintOutline(item) {
+  const { w, d } = footprint(item)
+  const outline = floorItemSpec(item.catalogId)?.shape?.outline
+  return outline ? outline.map(([x, z]) => toRoom(item, [x * w, z * d])) : footprintPolygons(item)[0]
+}
+
 /** Separating-axis test for two convex polygons; touching edges don't count as overlapping. */
 export function polygonsOverlap(a, b) {
   for (const poly of [a, b]) {
@@ -86,6 +142,21 @@ export function polygonsOverlap(a, b) {
   }
   return true
 }
+
+/** True when two pieces' real shapes touch (not just their bounding rectangles). */
+export function itemsOverlap(a, b) {
+  const fa = footprint(a)
+  const fb = footprint(b)
+  // Pieces further apart than their circumscribed circles can't touch: skip the exact test.
+  if (Math.hypot(a.x - b.x, a.z - b.z) > (Math.hypot(fa.w, fa.d) + Math.hypot(fb.w, fb.d)) / 2 + EPS) return false
+  return footprintPolygons(a).some((pa) => footprintPolygons(b).some((pb) => polygonsOverlap(pa, pb)))
+}
+
+/** True when a piece's real shape touches a polygon, such as a door swing or a wall item's footprint. */
+export const overlapsPolygon = (item, polygon) => footprintPolygons(item).some((p) => polygonsOverlap(p, polygon))
+
+/** True when a point [x, z] lies on a piece's real shape. */
+export const itemContains = (item, point) => footprintPolygons(item).some((p) => pointInPolygon(point, p))
 
 /** Clamp rotation and scale, then keep the whole footprint inside the room. */
 export function clampToRoom(item, size) {
@@ -171,7 +242,7 @@ export function surfaceElevation(item, others) {
   let top = 0
   for (const o of others) {
     if (o.uid === item.uid || o.wall || o.hidden || !floorItemSpec(o.catalogId)?.surface) continue
-    if (pointInPolygon([item.x, item.z], itemCorners(o))) top = Math.max(top, heightRange(o)[1])
+    if (itemContains(o, [item.x, item.z])) top = Math.max(top, heightRange(o)[1])
   }
   return Math.round(top * 1000) / 1000
 }
@@ -220,13 +291,17 @@ function wallItemVolume(item, spec) {
 const isRug = (item) => floorItemSpec(item.catalogId)?.layer === 'rug'
 const nameOf = (item) => (floorItemSpec(item.catalogId) || wallItemSpec(item.catalogId))?.name || 'Item'
 
-/** Problems with the furniture: too big, overlapping, blocking a door, or hitting wall décor. */
-export function floorWarnings(design) {
+/**
+ * Problems with the furniture: too big, overlapping, blocking a door, or hitting wall décor. Pass a
+ * `uid` to get only the problems that involve that piece, which is much cheaper when checking one new piece.
+ */
+export function floorWarnings(design, only = null) {
   const size = roomSize(design)
   const floor = design.items.filter((i) => !i.wall && !i.hidden)
   const specs = wallSpecs(size)
   const warnings = []
   for (const item of floor) {
+    if (only && item.uid !== only) continue
     const { hx, hz } = floorHalfExtents(item)
     if (hx * 2 > size.width + EPS || hz * 2 > size.length + EPS) {
       warnings.push({ kind: 'too-big', ids: [item.uid], message: `${nameOf(item)} is bigger than the room.` })
@@ -235,11 +310,12 @@ export function floorWarnings(design) {
   for (let i = 0; i < floor.length; i++) {
     for (let j = i + 1; j < floor.length; j++) {
       const [a, b] = [floor[i], floor[j]]
+      if (only && a.uid !== only && b.uid !== only) continue
       if (isRug(a) !== isRug(b)) continue // rugs sit under furniture
       const [ab, at] = heightRange(a)
       const [bb, bt] = heightRange(b)
       if (at <= bb + EPS || bt <= ab + EPS) continue // one stands on the other
-      if (polygonsOverlap(itemCorners(a), itemCorners(b))) {
+      if (itemsOverlap(a, b)) {
         warnings.push({ kind: 'overlap', ids: [a.uid, b.uid], message: `${nameOf(a)} overlaps ${nameOf(b).toLowerCase()}.` })
       }
     }
@@ -249,16 +325,18 @@ export function floorWarnings(design) {
       if (placed.catalogId === 'door') {
         const swing = doorSwing(placed, { ...spec, ...wallDims(size, spec.id) })
         for (const item of floor) {
-          if (!isRug(item) && polygonsOverlap(itemCorners(item), swing)) {
+          if (only && item.uid !== only) continue
+          if (!isRug(item) && overlapsPolygon(item, swing)) {
             warnings.push({ kind: 'door', ids: [item.uid, placed.uid], message: `${nameOf(item)} blocks the door on the ${spec.id} wall.` })
           }
         }
       } else if (!wallItemSpec(placed.catalogId)?.opening) {
         const vol = wallItemVolume(placed, spec)
         for (const item of floor) {
+          if (only && item.uid !== only) continue
           const [bottom, top] = heightRange(item)
           if (isRug(item) || top <= vol.bottom + EPS || bottom >= vol.top - EPS) continue
-          if (polygonsOverlap(itemCorners(item), vol.poly)) {
+          if (overlapsPolygon(item, vol.poly)) {
             warnings.push({ kind: 'clash', ids: [item.uid, placed.uid], message: `${nameOf(item)} hits the ${nameOf(placed).toLowerCase()} on the ${spec.id} wall.` })
           }
         }
@@ -280,12 +358,12 @@ export function findFloorSpot(item, design) {
     // Lamps, small plants and vases go on a free table top when there is one.
     const floor = design.items.filter((o) => !o.wall && !o.hidden)
     const surface = floor.find((o) => floorItemSpec(o.catalogId)?.surface
-      && !floor.some((s) => s.uid !== o.uid && floorItemSpec(s.catalogId)?.onSurface && pointInPolygon([s.x, s.z], itemCorners(o))))
+      && !floor.some((s) => s.uid !== o.uid && floorItemSpec(s.catalogId)?.onSurface && itemContains(o, [s.x, s.z])))
     if (surface) return clampToRoom({ ...base, x: surface.x, z: surface.z }, size)
   }
   const { hz } = floorHalfExtents(base)
   const preferred = { x: 0, z: spec.againstWall ? -size.length / 2 + hz : 0 }
-  const blockers = design.items.filter((o) => !o.wall && !o.hidden && isRug(o) === isRug(item)).map(itemCorners)
+  const blockers = design.items.filter((o) => !o.wall && !o.hidden && isRug(o) === isRug(item)).flatMap(footprintPolygons)
   if (!isRug(item)) {
     for (const s of wallSpecs(size)) {
       for (const door of onWall(design, s.id).filter((o) => o.catalogId === 'door')) {
@@ -301,8 +379,8 @@ export function findFloorSpot(item, design) {
   points.sort((a, b) => Math.hypot(a[0] - preferred.x, a[1] - preferred.z) - Math.hypot(b[0] - preferred.x, b[1] - preferred.z))
   for (const [x, z] of [[preferred.x, preferred.z], ...points]) {
     const placed = clampToRoom({ ...base, x, z }, size)
-    const poly = itemCorners(placed)
-    if (!blockers.some((b) => polygonsOverlap(poly, b))) return placed
+    const polys = footprintPolygons(placed)
+    if (!blockers.some((b) => polys.some((p) => polygonsOverlap(p, b)))) return placed
   }
   return clampToRoom({ ...base, ...preferred }, size)
 }

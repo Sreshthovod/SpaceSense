@@ -216,5 +216,5 @@ describe('fuzz: 1,000 random edits never leave anything outside the room', () =>
       }
     }
     expect(n).toBeGreaterThan(100)
-  })
+  }, 30_000) // 1,000 edits take ~2 s alone, but over the 5 s default when the whole suite runs in parallel
 })

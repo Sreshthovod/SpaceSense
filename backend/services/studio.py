@@ -8,6 +8,7 @@ as unpriced and never count towards a total.
 """
 import json
 import logging
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -22,6 +23,7 @@ from schemas import (
     StudioType,
 )
 from services import products as product_service
+from services.imagegen import RateLimiter
 
 logger = logging.getLogger("spacesense.studio")
 
@@ -168,3 +170,20 @@ def _suggestions(catalog: StudioCatalog, req: StudioPriceRequest, remaining: flo
         if len(out) == MAX_SUGGESTIONS:
             break
     return out
+
+
+# AI layouts spend the (small) free Gemini quota, so they are limited per client address.
+_layout_limiter: RateLimiter | None = None
+
+
+def layout_rate_limited(client: str) -> float:
+    """Records a layout request; returns 0, or the seconds the client must wait."""
+    global _layout_limiter
+    if _layout_limiter is None:
+        _layout_limiter = RateLimiter(limit=max(1, int(os.getenv("SPACESENSE_LAYOUT_RATE_PER_MIN", "6"))))
+    return _layout_limiter.check(client)
+
+
+def reset_layout_limiter() -> None:
+    global _layout_limiter
+    _layout_limiter = None

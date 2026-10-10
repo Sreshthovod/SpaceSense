@@ -20,6 +20,9 @@ vi.mock('./scene/DesignerScene', () => ({
 const KIVIK = { product_id: 'ikea-kivik-sofa', name: 'KIVIK 3-seat sofa', retailer: 'IKEA India', product_url: 'https://www.ikea.com/in/en/p/kivik/', image_url: null, price_inr: 50990, last_checked: '2026-10-10', listed_size: null, availability: 'in_stock', styles: ['scandinavian'] }
 const api = vi.hoisted(() => ({ offline: false, payloads: [] }))
 vi.mock('../services/api', () => ({
+  // The AI-arrange panel looks up which providers are set up; these tests never use it.
+  getImageProviders: () => new Promise(() => {}),
+  aiLayout: () => new Promise(() => {}),
   getStudioCatalog: () => (api.offline ? Promise.reject(new Error('down')) : Promise.resolve({
     currency: 'INR', budget_categories: {}, excluded_costs: 'Delivery not included.',
     types: { sofa: { category: 'furniture', products: [KIVIK] }, pouf: { category: 'accessories', products: [] } },

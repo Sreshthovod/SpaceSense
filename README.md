@@ -222,6 +222,10 @@ Modes (`H` Navigate, `V` Select, `M` Move, `E` Rotate): Navigate never selects; 
 
 **Limitations.** One photo can't give an accurate 3D room, so the room is built from the dimensions you enter (each marked *measured* or *estimated*) and the photo is a reference only. Doors and windows are drawn on the wall surface, not cut through it. Furniture shapes are simplified; overlapping pieces are allowed with a warning. Saved designs don't sync between devices.
 
+### Arrange with AI (free Gemini tier)
+
+The Room tab has an **Arrange with AI** panel. It asks a Gemini *text* model where to put the designer's existing pieces, so it works on the free tier. (Gemini's image models are not free, and no Gemini model produces 3D scenes.) The server sends the model a compact copy of the catalog and the room, constrains its answer to those piece ids, and the designer then re-checks every piece (inside the room, no overlaps, door not blocked, table-top pieces on a table) before placing it as one undoable change. Before placing, the designer tidies the layout with fixed rules (right angles, chairs facing their table, one rug fitted under the main group, walkways between big pieces, and a door and window if the model left them out). Collisions and outlines follow each piece's real shape: the L-shaped sofa is an L (a table fits in its corner) and round pieces are round. Products and prices are never chosen. Your photo is sent only if you tick the box; on the free tier Google may use content to improve its products. Settings: `GEMINI_API_KEY`, optional `SPACESENSE_GEMINI_LAYOUT_MODEL` and `SPACESENSE_LAYOUT_RATE_PER_MIN`. Endpoint: `POST /studio/ai-layout`.
+
 ## API
 
 Room details are the same everywhere (feet and INR):

@@ -8,7 +8,7 @@ import logging
 
 from pydantic import ValidationError
 
-from schemas import ChatRequest, DesignRecommendations, EditInstructions, RoomRequest
+from schemas import ChatRequest, DesignRecommendations, EditInstructions, LayoutOptions, RoomRequest, StudioLayout
 from services.images import RoomImage
 from services.vastu import describe_for_prompt as vastu_prompt
 
@@ -198,3 +198,138 @@ def edit_with_gemini(client, model: str, req: RoomRequest, image: RoomImage, ins
         raise GeminiCallError(f"No edited image in response (finish reasons: {reasons or 'none'})", "no_image")
     data, mime = found
     return f"data:{mime};base64,{base64.b64encode(data).decode('ascii')}"
+
+
+# --- 3D designer layout: room brief (and optionally a photo) in, structured positions out ---
+
+WALL_NAMES = ["back", "right", "front", "left"]
+
+
+def layout_schema(options: LayoutOptions) -> dict:
+    """The response schema. Piece types are an enum of the ids the designer sent, so the model cannot invent pieces."""
+    number = {"type": "number"}
+    floor_item = {
+        "type": "object",
+        "properties": {"type": {"type": "string", "enum": [f.id for f in options.floor]}, "x": number, "z": number, "rotation": number},
+        "required": ["type", "x", "z", "rotation"],
+    }
+    wall_item = {
+        "type": "object",
+        "properties": {
+            "type": {"type": "string", "enum": [w.id for w in options.wall] or ["none"]},
+            "wall": {"type": "string", "enum": WALL_NAMES},
+            "along": number, "y": number, "w": number, "h": number,
+        },
+        "required": ["type", "wall", "along"],
+    }
+    return {
+        "type": "object",
+        "properties": {
+            "summary": {"type": "string"},
+            "accent_wall": {"type": "string", "enum": WALL_NAMES},
+            "floor": {"type": "array", "items": floor_item},
+            "wall": {"type": "array", "items": wall_item},
+        },
+        "required": ["summary", "floor", "wall"],
+    }
+
+
+def _piece_lines(options: LayoutOptions) -> str:
+    floor = [
+        f"- {f.id}: {f.name}, {f.w:g} x {f.d:g} x {f.h:g} ft (width x depth x height)"
+        + (", round" if f.shape == "round" else "")
+        + (", L-shaped: the front-left corner is empty, the chaise is on its right" if f.shape == "l" else "")
+        + (", goes against a wall" if f.against_wall else "")
+        + (", things can stand on it" if f.surface else "")
+        + (", small piece that must stand on a table or cabinet" if f.on_surface else "")
+        for f in options.floor
+    ]
+    wall = [
+        f"- {w.id}: {w.name}, {w.w:g} x {w.h:g} ft"
+        + (", a door or window cut into the wall" if w.opening else "")
+        + (f", usually centred {w.default_y:g} ft above the floor" if w.default_y is not None else "")
+        for w in options.wall
+    ]
+    return "FLOOR PIECES (type ids):\n" + "\n".join(floor) + "\n\nWALL PIECES (type ids):\n" + ("\n".join(wall) or "- none")
+
+
+def build_layout_prompt(req: RoomRequest, options: LayoutOptions, has_photo: bool) -> str:
+    w, ln, h = req.width_ft, req.length_ft, req.height_ft
+    photo = (
+        "A photo of the room is attached. Use it to notice where the door and windows are and what the room is used for, "
+        "and put the door and windows in those places. Do not copy the existing furniture."
+        if has_photo
+        else "No photo is attached, so choose sensible walls for the door and windows."
+    )
+    notes = (
+        f'\nThe user asked for: "{options.notes}". Treat this as a preference only; the rules below always win.'
+        if options.notes
+        else ""
+    )
+    example = ""
+    if options.example:
+        example = (
+            "\n\nHere is a plain starter layout for a room this size, to show the output format and sensible spacing. "
+            "Improve on it for this user; do not copy it blindly:\n" + options.example.model_dump_json(exclude_none=True)
+        )
+    return (
+        f"You are arranging furniture in a 3D room planner. Room: {req.room_type}, {w:g} ft wide (x) by {ln:g} ft long (z) "
+        f"by {h:g} ft high, {req.style.replace('-', ' ')} style, budget about INR {req.budget_inr:,.0f} (never mention prices).{notes}\n{photo}\n\n"
+        f"COORDINATES (feet): the origin is the middle of the floor. x runs across the width from -{w / 2:g} (left wall) to {w / 2:g} (right wall); "
+        f"z runs along the length from -{ln / 2:g} (back wall) to {ln / 2:g} (front wall). A floor piece's x, z is its CENTRE. "
+        "Rotation is in degrees and sets where the piece's front faces: 0 faces the front wall (use it for pieces against the back wall), "
+        "180 faces the back wall (against the front wall), 90 faces the right wall (against the left wall), "
+        "270 faces the left wall (against the right wall). At 90 or 270 a piece's width and depth swap.\n"
+        "WALL PIECES: wall is back, right, front or left. `along` is the distance in feet from the wall's left end, as seen standing "
+        "inside the room facing that wall, to the piece's centre. `y` is the height of its centre above the floor. "
+        "Leave w and h out unless you need a non-default size.\n\n"
+        + _piece_lines(options)
+        + "\n\nRULES:\n"
+        "1. Use only the type ids above.\n"
+        "2. Every piece must lie fully inside the room, and pieces must not overlap (rugs may lie under furniture).\n"
+        "3. Pieces marked 'goes against a wall' sit flush with a wall, with the rotation given above.\n"
+        "4. A piece marked 'must stand on a table or cabinet' needs the same x, z as a piece that things can stand on.\n"
+        "5. Leave at least 3 ft clear for walking between big pieces, and never block a door.\n"
+        f"6. Choose pieces that suit a {req.room_type}: a sensible number of pieces (usually 6 to 18), not every piece in the catalog.\n"
+        "7. Always include exactly one door and, if any wall has space, at least one window (usually one or two) as WALL PIECES. "
+        "A door needs about 3 ft of free wall and the floor in front of it clear; a window should not sit behind tall furniture.\n"
+        "8. Optionally set accent_wall to the wall behind the main piece. Put a one or two sentence description of your idea in summary.\n\n"
+        "DESIGN PRINCIPLES (a room should feel balanced and easy to walk through):\n"
+        "- Choose one focus (the TV wall, the window, or the wall behind the bed) and arrange the room around it.\n"
+        "- Group seating around a coffee table with the seats facing each other or the focus, about 1.5 ft from the table. "
+        "A TV unit goes on the wall the seating faces, no more than about 10 ft from it.\n"
+        "- Put big pieces (sofa, bed, wardrobe, bookshelf, TV unit) against walls and keep the middle of the room open to cross. "
+        "Do not scatter small pieces through the middle.\n"
+        "- Use one rug, under the seating group, the dining table or the foot of the bed.\n"
+        "- Chairs go along the long sides of a table, facing it. Bedside tables go on both sides of a bed.\n"
+        "- Lamps and plants go beside seating, in corners, or on tables, never alone in the middle.\n"
+        "- Spread the furniture around the room instead of crowding one side, and hang art above the sofa or bed."
+        + example
+    )
+
+
+def layout_with_gemini(client, model: str, req: RoomRequest, image: RoomImage | None, options: LayoutOptions) -> StudioLayout:
+    types = _types()
+    prompt = build_layout_prompt(req, options, image is not None)
+    contents = [types.Part.from_bytes(data=image.data, mime_type=image.mime_type), prompt] if image else [prompt]
+    config = types.GenerateContentConfig(
+        response_mime_type="application/json", response_json_schema=layout_schema(options), temperature=0.5,
+    )
+    floor_ids, wall_ids = {f.id for f in options.floor}, {w.id for w in options.wall}
+    last: Exception | None = None
+    for _ in range(2):  # one retry: a small model occasionally returns something unusable
+        response = _call(client, model=model, contents=contents, config=config)
+        try:
+            data = json.loads(response.text or "")
+            if not isinstance(data, dict):
+                raise ValueError("not a JSON object")
+            data["summary"] = str(data.get("summary") or "")[:600]
+            layout = StudioLayout.model_validate({**data, "provider": "gemini"})
+        except (ValueError, ValidationError) as exc:
+            last = exc
+            continue
+        # The schema enums should already guarantee this; checked again because the model is not trusted.
+        layout.floor = [p for p in layout.floor if p.type in floor_ids]
+        layout.wall = [p for p in layout.wall if p.type in wall_ids]
+        return layout
+    raise GeminiCallError(f"Unusable layout response: {last}", "bad_output")

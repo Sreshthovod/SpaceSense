@@ -31,6 +31,7 @@ import { FloorFinishPanel, WallFinishPanel } from './panels/FinishPanels'
 import useGestureSetting from './hooks/useGestureSetting'
 import RoomSettings from './panels/RoomSettings'
 import TemplatePanel from './panels/TemplatePanel'
+import AiLayoutPanel from './panels/AiLayoutPanel'
 import WallPanel from './panels/WallPanel'
 import WallEditor from './wall/WallEditor'
 import DesignerScene from './scene/DesignerScene'
@@ -323,6 +324,7 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
       content: (
         <div className="space-y-5">
           <TemplatePanel design={design} roomType={form.roomType} onApply={applyTemplate} onDialog={onDialog} />
+          <AiLayoutPanel design={design} roomType={form.roomType} photo={photo} onApply={applyTemplate} onDialog={onDialog} />
           <ObjectList design={design} selected={selected} onSelect={closeDrawerOnPick((item) => (item.wall ? selectItem(item) : focusItem(item.uid)))} dispatch={dispatch} />
           <RoomSettings design={design} dispatch={dispatch} photoUrl={photo && design.photo?.name === photo.name ? photoUrl : null} />
         </div>
