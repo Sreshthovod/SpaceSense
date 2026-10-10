@@ -8,7 +8,11 @@ import Button from '../components/ui/Button'
 import { WALLS, WALL_LABELS, createDesign, findPlaced, onWall, roomSize, styleLabel } from './model/design'
 import { newUid } from './model/ids'
 import { GRID } from './model/wallPlacement'
-import { ROTATE_STEP, floorWarnings } from './model/floorPlacement'
+import { ROTATE_STEP, floorWarnings, itemWorldCenter } from './model/floorPlacement'
+import { wallItemSpec } from './model/catalog'
+import useBudget from './hooks/useBudget'
+import useStudioCatalog from './hooks/useStudioCatalog'
+import BudgetPanel, { BudgetMeter } from './panels/BudgetPanel'
 import { FurnitureCatalog, FurnitureInspector } from './panels/FurnitureCatalog'
 import { designReducer } from './model/reducer'
 import RoomSettings from './panels/RoomSettings'
@@ -40,6 +44,9 @@ export default function RoomDesigner({ form, photo, photoUrl, onClose }) {
   const [viewKey, setViewKey] = useState(0)
   const [activeWall, setActiveWall] = useState(null)
   const [selected, setSelected] = useState(null)
+  const [focus, setFocus] = useState(null) // { position, radius, key } — a camera focus request
+  const { catalog, error: catalogError } = useStudioCatalog()
+  const budget = useBudget(design)
   const headingRef = useRef(null)
 
   const size = roomSize(design)
@@ -85,6 +92,21 @@ export default function RoomDesigner({ form, photo, photoUrl, onClose }) {
     if (!selectedItem) return
     dispatch({ type: 'removePlaced', uid: selectedItem.uid })
     setSelected(null)
+  }
+  // A cost row: select that object and bring it into view, staying in the 3D view.
+  const focusItem = (uid) => {
+    const found = findPlaced(design, uid)
+    if (!found) return
+    setActiveWall(null)
+    setSelected(uid)
+    setFocus((f) => ({ ...itemWorldCenter(design, found.item), key: (f?.key || 0) + 1 }))
+  }
+  // A suggestion is only added when the user asks; it arrives with its product already chosen.
+  const addSuggestion = ({ type, product }) => {
+    const uid = newUid()
+    if (wallItemSpec(type)) dispatch({ type: 'addWallItem', uid, wall: activeWall || 'back', catalogId: type, productId: product.product_id })
+    else dispatch({ type: 'addFloorItem', uid, catalogId: type, productId: product.product_id })
+    setSelected(uid)
   }
   const addWallItem = (catalogId) => {
     const uid = newUid()
@@ -147,6 +169,9 @@ export default function RoomDesigner({ form, photo, photoUrl, onClose }) {
             {styleName} · Budget {formatINR(design.budget)} · Build your dream room. Place every item yourself.
           </p>
         </div>
+        <div className="hidden sm:block" aria-hidden={!budget.data}>
+          <BudgetMeter data={budget.data} compact />
+        </div>
         <Button variant="secondary" onClick={onClose}>
           <ArrowLeft aria-hidden="true" className="h-4 w-4" /> Back to results
         </Button>
@@ -175,6 +200,7 @@ export default function RoomDesigner({ form, photo, photoUrl, onClose }) {
                 design={design}
                 size={size}
                 viewKey={viewKey}
+                focus={focus}
                 reduced={reduced}
                 activeWall={activeWall}
                 selected={selected}
@@ -213,13 +239,24 @@ export default function RoomDesigner({ form, photo, photoUrl, onClose }) {
           </div>
         </div>
         <aside aria-label={activeWall ? 'Wall tools' : 'Room settings'} className="min-h-0 overflow-y-auto p-5">
+          <div className="mb-6">
+            <BudgetPanel
+              design={design}
+              dispatch={dispatch}
+              budget={budget}
+              selected={selected}
+              onSelectLine={focusItem}
+              onAddSuggestion={addSuggestion}
+              defaultOpen={false}
+            />
+          </div>
           {activeWall ? (
-            <WallPanel design={design} wallId={activeWall} selected={selected} dispatch={dispatch} onAdd={addWallItem} />
+            <WallPanel design={design} wallId={activeWall} selected={selected} dispatch={dispatch} onAdd={addWallItem} catalog={catalog} catalogError={catalogError} />
           ) : (
             <>
               {selectedItem && !selectedItem.wall && (
                 <div className="mb-6">
-                  <FurnitureInspector item={selectedItem} dispatch={dispatch} onDuplicate={duplicateSelected} onDelete={deleteSelected} onDeselect={() => setSelected(null)} />
+                  <FurnitureInspector item={selectedItem} dispatch={dispatch} onDuplicate={duplicateSelected} onDelete={deleteSelected} onDeselect={() => setSelected(null)} catalog={catalog} catalogError={catalogError} />
                 </div>
               )}
               <section aria-labelledby="walls-heading" className="mb-6">
@@ -239,7 +276,7 @@ export default function RoomDesigner({ form, photo, photoUrl, onClose }) {
                   })}
                 </div>
               </section>
-              <div className="mb-6 border-b border-line pb-6"><FurnitureCatalog onAdd={addFloorItem} /></div>
+              <div className="mb-6 border-b border-line pb-6"><FurnitureCatalog onAdd={addFloorItem} catalog={catalog} /></div>
               <RoomSettings design={design} dispatch={dispatch} photoUrl={photoUrl} />
             </>
           )}

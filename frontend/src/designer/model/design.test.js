@@ -111,9 +111,9 @@ describe('designReducer', () => {
 
   it('switches floor material with its colour, or sets a custom colour', () => {
     const marble = designReducer(base, { type: 'setFloor', material: 'marble' })
-    expect(marble.floor).toEqual({ material: 'marble', color: '#ece8e1' })
+    expect(marble.floor).toMatchObject({ material: 'marble', color: '#ece8e1', rotation: 0, scale: 1, sheen: 'matte' })
     const custom = designReducer(marble, { type: 'setFloor', color: '#123456' })
-    expect(custom.floor).toEqual({ material: 'marble', color: '#123456' })
+    expect(custom.floor).toMatchObject({ material: 'marble', color: '#123456' })
     expect(designReducer(base, { type: 'setFloor', material: 'lava' })).toBe(base)
   })
 

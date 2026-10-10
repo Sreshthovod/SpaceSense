@@ -100,7 +100,7 @@ export function snapFloor(item, others, size, { grid = FLOOR_GRID } = {}) {
 }
 
 /** Wall-local (along, out) to room [x, z] for one wall. */
-function wallToRoom(spec, along, out) {
+export function wallToRoom(spec, along, out) {
   const t = spec.rotationY
   const xAxis = [Math.cos(t), -Math.sin(t)]
   const [nx, , nz] = spec.normal
@@ -206,3 +206,19 @@ export function findFloorSpot(item, design) {
 }
 
 export const snapRotationStep = (deg, step = ROTATE_STEP) => normalise(Math.round(deg / step) * step)
+
+/**
+ * The centre of a placed item in room space [x, y, z] and a radius that encloses it, for pointing
+ * the camera at it.
+ */
+export function itemWorldCenter(design, item) {
+  const size = roomSize(design)
+  if (item.wall) {
+    const spec = wallSpecs(size).find((s) => s.id === item.wall)
+    const d = wallItemSpec(item.catalogId)?.size.d || 0.1
+    const [x, z] = wallToRoom({ ...spec, ...wallDims(size, item.wall) }, item.x, d / 2)
+    return { position: [x, item.y, z], radius: Math.max(item.w, item.h) / 2 + 0.5 }
+  }
+  const { w, d, h } = footprint(item)
+  return { position: [item.x, h / 2, item.z], radius: Math.hypot(w, d, h) / 2 + 0.5 }
+}

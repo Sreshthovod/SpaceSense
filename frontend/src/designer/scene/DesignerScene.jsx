@@ -11,7 +11,7 @@ import { ResourcesProvider } from './resources'
  * `flat` turns off tone mapping so painted walls match the swatch the user picked.
  */
 export default function DesignerScene({
-  design, size, viewKey, reduced, label, activeWall, selected, warned, onSelectWall, onSelectItem, onDeselect, dispatch,
+  design, size, viewKey, focus, reduced, label, activeWall, selected, warned, onSelectWall, onSelectItem, onDeselect, dispatch,
 }) {
   const controls = useRef(null)
   // Called from pointer handlers, so the camera stops before the drag's first move event.
@@ -51,7 +51,7 @@ export default function DesignerScene({
         <Room size={size} design={design} activeWall={activeWall} selected={selected} onSelectWall={onSelectWall} onSelectItem={onSelectItem} onDeselect={onDeselect} />
         <FloorItems design={design} size={size} selected={selected} warned={warned} setOrbitEnabled={setOrbitEnabled} onSelect={onSelectItem} dispatch={dispatch} />
       </ResourcesProvider>
-      <Controls room={size} viewKey={viewKey} reduced={reduced} controlsRef={controls} />
+      <Controls room={size} viewKey={viewKey} focus={focus} reduced={reduced} controlsRef={controls} />
     </Canvas>
   )
 }

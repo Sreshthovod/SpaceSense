@@ -6,7 +6,7 @@
  */
 import { LIMITS } from '../../utils/validation'
 
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 // Demo defaults when the designer opens without a filled-in brief.
 export const DEMO = { budget: 25000, style: 'modern-indian', width: 12, length: 14, height: 9 }
@@ -41,6 +41,13 @@ export const FLOOR_MATERIALS = {
 
 const HEX = /^#[0-9a-f]{6}$/i
 
+// Fields every placed item carries from schema version 2 on.
+export const ITEM_DEFAULTS = { productId: null, label: null, hidden: false, locked: false, color: null }
+export const defaultWall = (color = PAINTS[0].color) => ({ color, kind: 'paint', pattern: null, sheen: 'matte' })
+export const defaultFloor = (material = 'wood') => ({
+  material, color: FLOOR_MATERIALS[material].color, rotation: 0, scale: 1, sheen: 'matte',
+})
+
 const dimension = (raw, fallback) => {
   const n = Number(raw)
   return raw !== '' && raw != null && Number.isFinite(n) && n > 0
@@ -57,8 +64,8 @@ export function createDesign({ form = {}, photoName = null } = {}) {
       length: dimension(form.length, DEMO.length),
       height: dimension(form.height, DEMO.height),
     },
-    walls: Object.fromEntries(WALLS.map((w) => [w, { color: PAINTS[0].color }])),
-    floor: { material: 'wood', color: FLOOR_MATERIALS.wood.color },
+    walls: Object.fromEntries(WALLS.map((w) => [w, defaultWall()])),
+    floor: defaultFloor(),
     openings: [], // doors and windows, placed per wall
     items: [], // placed catalog items
     budget: Number(form.budget) > 0 ? Number(form.budget) : DEMO.budget,
@@ -66,6 +73,26 @@ export function createDesign({ form = {}, photoName = null } = {}) {
     choices: { removed: [], replaced: {} },
     photo: photoName ? { name: photoName } : null,
   }
+}
+
+/**
+ * Upgrades an older design object to the current schema. Unknown future versions are not touched;
+ * validateDesign() rejects them.
+ */
+export function migrate(design) {
+  let d = design
+  if (d.schemaVersion === 1) {
+    const upgrade = (list) => (Array.isArray(list) ? list.map((i) => ({ ...ITEM_DEFAULTS, ...i })) : list)
+    d = {
+      ...d,
+      schemaVersion: 2,
+      walls: Object.fromEntries(WALLS.map((w) => [w, { ...defaultWall(), ...(d.walls?.[w] || {}) }])),
+      floor: { ...defaultFloor(FLOOR_MATERIALS[d.floor?.material] ? d.floor.material : 'wood'), ...(d.floor || {}) },
+      items: upgrade(d.items),
+      openings: upgrade(d.openings),
+    }
+  }
+  return d
 }
 
 export const clampDimension = (key, value) => {

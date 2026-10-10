@@ -1,0 +1,29 @@
+{
+  "budget_categories": {
+    "furniture": "Furniture",
+    "lighting": "Lighting",
+    "accessories": "Accessories",
+    "wall_finishes": "Wall finishes",
+    "flooring": "Flooring"
+  },
+  "types": {
+    "sofa": {"category": "furniture", "products": ["ikea-klippan-sofa", "ikea-glostad-sofa", "ikea-kivik-sofa", "ikea-friheten-sofa-bed"]},
+    "armchair": {"category": "furniture", "products": ["ikea-poang-armchair", "ikea-strandmon-chair"]},
+    "coffee-table": {"category": "furniture", "products": ["ikea-lack-coffee-table"]},
+    "side-table": {"category": "furniture", "products": ["ikea-lack-side-table"]},
+    "dining-table": {"category": "furniture", "products": ["ikea-lisabo-table", "ikea-hagernas-table"]},
+    "bed": {"category": "furniture", "products": ["ikea-brimnes-bed", "ikea-malm-bed"]},
+    "wardrobe": {"category": "furniture", "products": ["ikea-brimnes-wardrobe"]},
+    "bookshelf": {"category": "furniture", "products": ["ikea-billy-bookcase", "ikea-kallax-shelf"]},
+    "rug": {"category": "accessories", "products": ["ikea-lohals-rug", "ikea-tiphede-rug", "ikea-stockholm-rug"]},
+    "plant": {"category": "accessories", "products": ["ikea-fejka-plant"]},
+    "floor-lamp": {"category": "lighting", "products": ["ikea-hektar-floor-lamp", "ikea-arstid-floor-lamp"]},
+    "pouf": {"category": "accessories", "products": []},
+    "painting": {"category": "accessories", "products": ["ikea-lomviken-frame"]},
+    "mirror": {"category": "accessories", "products": ["ikea-nissedal-mirror", "ikea-hovet-mirror"]},
+    "shelf": {"category": "accessories", "products": []},
+    "sconce": {"category": "lighting", "products": []},
+    "panel": {"category": "wall_finishes", "products": []},
+    "curtains": {"category": "accessories", "products": ["ikea-matilda-sheer", "ikea-hallebracka-sheer", "ikea-majgull-curtains"]}
+  }
+}

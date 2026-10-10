@@ -1,7 +1,8 @@
 import {
-  DIMENSIONS, FLOOR_MATERIALS, PAINTS, WALLS, clampDimension, collectionFor, findPlaced, isHexColor, onWall, roomSize,
-  wallDims,
+  DIMENSIONS, FLOOR_MATERIALS, ITEM_DEFAULTS, PAINTS, WALLS, clampDimension, collectionFor, findPlaced, isHexColor, onWall,
+  roomSize, wallDims,
 } from './design'
+import { STYLES } from '../../data/sampleData'
 import { floorItemSpec, wallItemSpec } from './catalog'
 import { clampToRoom, findFloorSpot } from './floorPlacement'
 import { clampToWall, findFreeSpot } from './wallPlacement'
@@ -50,14 +51,14 @@ export function designReducer(design, action) {
       // Choosing a material resets to its colour; an explicit colour wins.
       const color = action.color ?? (action.material ? FLOOR_MATERIALS[material].color : design.floor.color)
       if (!isHexColor(color)) return design
-      return { ...design, floor: { material, color } }
+      return { ...design, floor: { ...design.floor, material, color } }
     }
     case 'addWallItem': {
       const { uid, wall, catalogId } = action
       const spec = wallItemSpec(catalogId)
       if (!spec || !WALLS.includes(wall) || !uid || findPlaced(design, uid)) return design
       const dims = wallDims(roomSize(design), wall)
-      const fresh = { uid, catalogId, wall, x: dims.span / 2, y: spec.defaultY, w: spec.size.w, h: spec.size.h, rotation: 0 }
+      const fresh = { ...ITEM_DEFAULTS, productId: action.productId ?? null, uid, catalogId, wall, x: dims.span / 2, y: spec.defaultY, w: spec.size.w, h: spec.size.h, rotation: 0 }
       const item = findFreeSpot(fresh, onWall(design, wall), dims)
       const key = collectionFor(spec.opening)
       return { ...design, [key]: [...design[key], item] }
@@ -65,7 +66,7 @@ export function designReducer(design, action) {
     case 'addFloorItem': {
       const { uid, catalogId } = action
       if (!floorItemSpec(catalogId) || !uid || findPlaced(design, uid)) return design
-      const item = findFloorSpot({ uid, catalogId, wall: null, x: 0, z: 0, rotation: 0, scale: 1 }, design)
+      const item = findFloorSpot({ ...ITEM_DEFAULTS, productId: action.productId ?? null, uid, catalogId, wall: null, x: 0, z: 0, rotation: 0, scale: 1 }, design)
       return { ...design, items: [...design.items, item] }
     }
     case 'updatePlaced': {
@@ -95,12 +96,31 @@ export function designReducer(design, action) {
       if (!found) return design
       return { ...design, [found.key]: design[found.key].filter((i) => i.uid !== action.uid) }
     }
+    case 'setProduct': {
+      // The product a placed item stands for, picked by the user. The server checks it belongs to
+      // this item type before pricing it; null means a generic shape with no price.
+      const found = findPlaced(design, action.uid)
+      const productId = action.productId ?? null
+      if (!found || (productId !== null && (typeof productId !== 'string' || !productId))) return design
+      if (found.item.productId === productId) return design
+      return { ...design, [found.key]: replaceAt(design[found.key], found.index, { ...found.item, productId }) }
+    }
+    case 'setBudget': {
+      // Budget and style only steer suggestions; placed items are never touched.
+      const value = Number(action.value)
+      if (!Number.isFinite(value) || value < 0 || value > 100_000_000 || value === design.budget) return design
+      return { ...design, budget: value }
+    }
+    case 'setStyle': {
+      if (!STYLES.some((s) => s.id === action.style) || action.style === design.style) return design
+      return { ...design, style: action.style }
+    }
     case 'resetWall': {
       const { wall } = action
       if (!WALLS.includes(wall)) return design
       return {
         ...design,
-        walls: { ...design.walls, [wall]: { ...design.walls[wall], color: PAINTS[0].color } },
+        walls: { ...design.walls, [wall]: { ...design.walls[wall], color: PAINTS[0].color, kind: 'paint', pattern: null } },
         items: design.items.filter((i) => i.wall !== wall),
         openings: design.openings.filter((i) => i.wall !== wall),
       }

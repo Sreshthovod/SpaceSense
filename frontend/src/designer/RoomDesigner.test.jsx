@@ -6,7 +6,36 @@ const webgl = vi.hoisted(() => ({ available: false }))
 vi.mock('./webgl', () => ({ hasWebGL: () => webgl.available }))
 // jsdom has no WebGL, so the canvas is replaced by a stub that shows what it was given.
 vi.mock('./scene/DesignerScene', () => ({
-  default: ({ design, label }) => <div data-testid="scene" aria-label={label} data-floor={design.floor.material} />,
+  default: ({ design, label, selected, focus }) => (
+    <div data-testid="scene" aria-label={label} data-floor={design.floor.material} data-selected={selected || ''} data-focus={focus ? focus.position.map((v) => v.toFixed(1)).join(',') : ''} />
+  ),
+}))
+
+// A fake server: the catalog lists one verified sofa; pricing sums the picked products' prices.
+const KIVIK = { product_id: 'ikea-kivik-sofa', name: 'KIVIK 3-seat sofa', retailer: 'IKEA India', product_url: 'https://www.ikea.com/in/en/p/kivik/', image_url: null, price_inr: 50990, last_checked: '2026-10-10', listed_size: null, availability: 'in_stock', styles: ['scandinavian'] }
+const api = vi.hoisted(() => ({ offline: false, payloads: [] }))
+vi.mock('../services/api', () => ({
+  getStudioCatalog: () => (api.offline ? Promise.reject(new Error('down')) : Promise.resolve({
+    currency: 'INR', budget_categories: {}, excluded_costs: 'Delivery not included.',
+    types: { sofa: { category: 'furniture', products: [KIVIK] }, pouf: { category: 'accessories', products: [] } },
+  })),
+  priceDesign: (payload) => {
+    api.payloads.push(payload)
+    if (api.offline) return Promise.reject(new Error("Can't reach the SpaceSense server"))
+    const lines = payload.items.map((i) => ({
+      uid: i.uid, type: i.type, label: i.type, category: 'furniture',
+      product: i.product_id ? KIVIK : null, price_inr: i.product_id ? KIVIK.price_inr : null,
+      price_status: i.product_id ? 'verified' : 'unavailable', reason: i.product_id ? null : 'generic',
+    }))
+    const total = lines.reduce((s, l) => s + (l.price_inr || 0), 0)
+    return Promise.resolve({
+      currency: 'INR', budget_inr: payload.budget_inr, total_inr: total, remaining_inr: payload.budget_inr - total,
+      over_budget_inr: total > payload.budget_inr ? total - payload.budget_inr : null,
+      used_ratio: payload.budget_inr ? total / payload.budget_inr : null, unpriced_count: lines.filter((l) => !l.price_inr).length,
+      categories: [{ id: 'furniture', label: 'Furniture', total_inr: total, priced_count: lines.filter((l) => l.price_inr).length, unpriced_count: 0 }],
+      lines, suggestions: [], excluded_costs: 'Delivery not included.',
+    })
+  },
 }))
 
 const { default: RoomDesigner } = await import('./RoomDesigner')
@@ -20,6 +49,9 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   webgl.available = false
+  api.offline = false
+  api.payloads.length = 0
+  vi.useRealTimers()
 })
 
 describe('RoomDesigner', () => {
@@ -98,5 +130,54 @@ describe('RoomDesigner', () => {
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByRole('group', { name: /^Back wall/ })).toBeNull()
     expect(screen.getByRole('button', { name: /^back wall/i }).textContent).toMatch('Empty')
+  })
+
+  it('prices only products the user picks, on the server, and focuses a cost row', async () => {
+    webgl.available = true
+    render(<RoomDesigner form={form} onClose={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Add three-seater sofa' }))
+    const picker = await screen.findByLabelText('Product')
+    expect(screen.getByText(/Not counted in your budget/)).toBeTruthy()
+    fireEvent.change(picker, { target: { value: 'ikea-kivik-sofa' } })
+    expect(screen.getByText(/₹50,990 · verified 10 Oct 2026/)).toBeTruthy()
+
+    // The meter shows the server's numbers: over a ₹25,000 budget.
+    await vi.waitFor(() => expect(screen.getByTestId('budget-meter').textContent).toBe('₹50,990 · ₹25,990 over budget'), { timeout: 2000 })
+    const last = api.payloads.at(-1)
+    expect(last.items).toEqual([{ uid: expect.any(String), type: 'sofa', product_id: 'ikea-kivik-sofa' }])
+    expect(JSON.stringify(last)).not.toMatch(/price/)
+
+    // Clicking the cost row selects the sofa and asks the camera to focus on it.
+    fireEvent.click(screen.getByRole('button', { name: /^Budget/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Deselect' }))
+    expect(screen.getByTestId('scene').dataset.selected).toBe('')
+    fireEvent.click(screen.getByRole('button', { name: /KIVIK 3-seat sofa/ }))
+    expect(screen.getByTestId('scene').dataset.selected).toBe(last.items[0].uid)
+    expect(screen.getByTestId('scene').dataset.focus).toMatch(/^0\.0,/)
+  })
+
+  it('changing budget or style keeps every placed item', async () => {
+    webgl.available = true
+    render(<RoomDesigner form={form} onClose={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Add three-seater sofa' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add potted plant' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Budget/ }))
+    const budget = screen.getByLabelText('Budget (₹)')
+    fireEvent.change(budget, { target: { value: '90000' } })
+    fireEvent.blur(budget)
+    fireEvent.change(screen.getByLabelText('Style'), { target: { value: 'industrial' } })
+    await vi.waitFor(() => expect(api.payloads.at(-1)?.budget_inr).toBe(90000), { timeout: 2000 })
+    expect(api.payloads.at(-1).style).toBe('industrial')
+    expect(api.payloads.at(-1).items.map((i) => i.type)).toEqual(['sofa', 'plant'])
+  })
+
+  it('keeps working when prices are unavailable', async () => {
+    webgl.available = true
+    api.offline = true
+    render(<RoomDesigner form={form} onClose={() => {}} />)
+    expect(await screen.findByText(/Prices unavailable — couldn't reach the server/, {}, { timeout: 2000 })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Add three-seater sofa' }))
+    expect(screen.getByText('Product prices are unavailable right now.')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Three-seater sofa' })).toBeTruthy()
   })
 })
