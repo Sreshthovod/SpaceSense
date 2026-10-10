@@ -29,7 +29,8 @@ from services.images import ImageValidationError, RoomImage, max_upload_bytes, v
 from services import imagegen
 from services import vision
 from services.products import CATALOG_PATH, CatalogError, get_product_sources, load_catalog, recommend
-from services.providers import ProviderError, get_design_editor, get_room_analyzer, get_room_chat
+from services import providers as providers_module
+from services.providers import ProviderConfigError, ProviderError, get_design_editor, get_room_analyzer, get_room_chat
 from services.studio import STUDIO_CATALOG_PATH, StudioDesignError, load_mapping, price_design, studio_catalog
 
 logger = logging.getLogger("spacesense")
@@ -178,18 +179,29 @@ async def chat_endpoint(room: str = Form(...), photo: UploadFile = File(...), ch
 
 @app.post("/generate-design", response_model=DesignResponse)
 async def generate_design(
+    request: Request,
     room: str = Form(...),
     photo: UploadFile = File(...),
     instructions: str = Form(...),
     approved: str = Form(""),
+    provider: str = Form(""),
 ):
-    """Edits the user's original photo. Runs only with explicit approval (`approved=true`)."""
+    """Edits the user's original photo. Runs only with explicit approval (`approved=true`).
+
+    `provider` picks the image editor: "gemini" or "cloudflare". Empty uses the server's configured editor.
+    """
     if approved.strip().lower() != "true":
         return error(403, "approval_required", "Approve the recommendations before editing your photo.", field="approved")
     req = parse_json_field(RoomRequest, room, "room")
     edits = parse_json_field(EditInstructions, instructions, "instructions")
+    provider = imagegen.validate_provider(provider) if provider.strip() else ""
     image = await read_photo(photo)
-    editor = get_design_editor()
+    if provider == "cloudflare":
+        return await edit_with_cloudflare(request, req, image, edits)
+    try:
+        editor = providers_module.EDITORS["gemini"]() if provider == "gemini" else get_design_editor()
+    except ProviderConfigError:
+        return error(503, "edit_failed", "Gemini image editing isn't set up on this server (GEMINI_API_KEY)." + UNCHANGED)
     try:
         result = await run_in_threadpool(editor.edit, req, image, edits)
     except ProviderError as exc:
@@ -197,6 +209,30 @@ async def generate_design(
         return provider_failure(exc, "edit_failed", "The image editor did not return an edited photo.", UNCHANGED)
     if result.image_url:
         result.preservation = await run_in_threadpool(vision.compare_structure, image, result.image_url)
+    return result
+
+
+async def edit_with_cloudflare(request: Request, req: RoomRequest, image: RoomImage, edits: EditInstructions):
+    if limited := imagegen_rate_limited(request):
+        return limited
+    try:
+        source = await run_in_threadpool(
+            imagegen.prepare_edit_image, image.data, imagegen.REDESIGN_OUTPUT_SIDE, False
+        )
+        image_url = await run_in_threadpool(imagegen.edit_image, imagegen.redesign_prompt(req, edits), source)
+    except imagegen.ImageGenError as exc:
+        logger.error("Cloudflare design edit failed (%s): %s", exc.reason, exc)
+        return imagegen_failure(exc, "cloudflare", "edit_failed", UNCHANGED)
+    result = DesignResponse(
+        status="edited",
+        provider="cloudflare",
+        is_ai_generated=True,
+        image_url=image_url,
+        message="AI-edited version of your original photo, made with Cloudflare FLUX. It is regenerated from a "
+        "small copy of your photo, so details can differ more than with Gemini.",
+        instructions_used=edits.items,
+    )
+    result.preservation = await run_in_threadpool(vision.compare_structure, image, image_url)
     return result
 
 
@@ -229,9 +265,9 @@ IMAGEGEN_FAILURES = {
 }
 
 
-def imagegen_failure(exc: imagegen.ImageGenError, provider: str) -> JSONResponse:
+def imagegen_failure(exc: imagegen.ImageGenError, provider: str, code: str = "image_generation_failed", suffix: str = "") -> JSONResponse:
     status, message = IMAGEGEN_FAILURES.get(exc.reason, (502, "The image service failed. Please try again."))
-    return error(status, "image_generation_failed", message.format(provider=provider.capitalize(), keys=IMAGEGEN_KEYS[provider]))
+    return error(status, code, message.format(provider=provider.capitalize(), keys=IMAGEGEN_KEYS[provider]) + suffix)
 
 
 def imagegen_rate_limited(request: Request) -> JSONResponse | None:

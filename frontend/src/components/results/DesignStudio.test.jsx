@@ -2,9 +2,9 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import DesignStudio, { APPROVAL_QUESTION } from './DesignStudio'
-import { editRoomPhoto } from '../../services/api'
+import { editRoomPhoto, getImageProviders } from '../../services/api'
 
-vi.mock('../../services/api', () => ({ editRoomPhoto: vi.fn() }))
+vi.mock('../../services/api', () => ({ editRoomPhoto: vi.fn(), getImageProviders: vi.fn() }))
 
 const form = { roomType: 'Living room', length: '14', width: '12', height: '9', style: 'scandinavian', budget: '60000', vastu: false }
 const photo = new File(['png'], 'room.png', { type: 'image/png' })
@@ -20,7 +20,10 @@ const click = (name) => fireEvent.click(screen.getByRole('button', { name }))
 const imgSrcs = () => screen.getAllByRole('img').map((i) => i.getAttribute('src'))
 
 // Braces matter: a function returned from beforeEach is run as a teardown hook.
-beforeEach(() => { vi.mocked(editRoomPhoto).mockReset() })
+beforeEach(() => {
+  vi.mocked(editRoomPhoto).mockReset()
+  vi.mocked(getImageProviders).mockReset().mockResolvedValue({ cloudflare: true, gemini: true })
+})
 afterEach(cleanup)
 
 describe('DesignStudio approval flow', () => {
@@ -106,5 +109,26 @@ describe('DesignStudio approval flow', () => {
     expect(editRoomPhoto).toHaveBeenCalledTimes(1)
     resolve({ status: 'mock', image_url: null, message: 'm' })
     await screen.findByText(/no edited photo was created/i)
+  })
+
+  it('lets the user choose the editor and sends that choice with the approved edit', async () => {
+    vi.mocked(editRoomPhoto).mockResolvedValue({ status: 'edited', image_url: EDITED, message: 'ok' })
+    renderStudio()
+    expect(screen.getByRole('radio', { name: /gemini/i }).checked).toBe(true) // the previous behaviour is the default
+    fireEvent.click(screen.getByRole('radio', { name: /cloudflare/i }))
+    click(/yes, edit my photo/i)
+    await waitFor(() => expect(editRoomPhoto).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(editRoomPhoto).mock.calls[0][0].provider).toBe('cloudflare')
+  })
+
+  it('disables an editor with no key on the server and falls back to the other', async () => {
+    vi.mocked(getImageProviders).mockResolvedValue({ cloudflare: false, gemini: true })
+    renderStudio()
+    await waitFor(() => expect(screen.getByRole('radio', { name: /cloudflare/i }).disabled).toBe(true))
+    expect(screen.getByText('(not set up)')).toBeTruthy()
+    vi.mocked(getImageProviders).mockResolvedValue({ cloudflare: true, gemini: false })
+    cleanup()
+    renderStudio()
+    await waitFor(() => expect(screen.getByRole('radio', { name: /cloudflare/i }).checked).toBe(true))
   })
 })

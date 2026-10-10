@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Loader2, Pencil, RotateCcw, Wand2 } from 'lucide-react'
-import { editRoomPhoto } from '../../services/api'
+import { editRoomPhoto, getImageProviders } from '../../services/api'
 import { toApprovableItems } from '../../utils/recommendations'
 import Button from '../ui/Button'
 import Card from '../ui/Card'
 import PhotoComparison from './PhotoComparison'
+
+const EDITORS = [
+  { id: 'gemini', name: 'Gemini', note: 'Google AI. Works from your full-quality photo and keeps the room closest to the original.' },
+  { id: 'cloudflare', name: 'Cloudflare', note: 'FLUX on Cloudflare, free daily allowance. Works from a small copy of your photo, so details can differ more.' },
+]
 
 export const APPROVAL_QUESTION = 'Would you like me to apply these changes to your original room photo?'
 
@@ -20,9 +25,21 @@ export default function DesignStudio({ form, photo, originalUrl, recommendations
   const [draft, setDraft] = useState(null) // { selected, notes } while customizing
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
+  const [provider, setProvider] = useState('gemini')
+  const [available, setAvailable] = useState(null) // { cloudflare, gemini } once known
   const inFlight = useRef(false)
   const abortRef = useRef(null)
   useEffect(() => () => abortRef.current?.abort(), [])
+  useEffect(() => {
+    const controller = new AbortController()
+    getImageProviders(controller.signal)
+      .then((status) => {
+        setAvailable(status)
+        setProvider((current) => (status[current] ? current : EDITORS.find((e) => status[e.id])?.id ?? current))
+      })
+      .catch(() => {}) // backend unreachable: editing will show the real error
+    return () => controller.abort()
+  }, [])
 
   const approvedItems = items.filter((i) => selected.has(i.id))
   // Only a real edit carries an image; the original upload is never replaced.
@@ -37,7 +54,7 @@ export default function DesignStudio({ form, photo, originalUrl, recommendations
     setError('')
     try {
       const data = await editRoomPhoto(
-        { form, photo, items: approvedItems.map((i) => i.instruction), notes: notes.trim() },
+        { form, photo, items: approvedItems.map((i) => i.instruction), notes: notes.trim(), provider },
         controller.signal,
       )
       setResult(data)
@@ -82,6 +99,29 @@ export default function DesignStudio({ form, photo, originalUrl, recommendations
               {approvedItems.length} of {items.length} recommended changes selected{notes.trim() ? ', plus your notes' : ''}.
               Your room's walls, doors, windows and camera angle are kept; only the selected changes are applied.
             </p>
+            <fieldset className="mt-5">
+              <legend className="mb-2 text-sm font-semibold">Edit my photo with</legend>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {EDITORS.map((e) => {
+                  const missing = available !== null && !available[e.id]
+                  return (
+                    <label
+                      key={e.id}
+                      className={`rounded-xl border p-3 text-sm has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-sage-dark ${
+                        missing ? 'cursor-not-allowed border-line bg-sand/40 text-muted' : 'cursor-pointer'
+                      } ${provider === e.id && !missing ? 'border-ink bg-sand/60' : 'border-line bg-white'}`}
+                    >
+                      <input
+                        type="radio" name="photo-editor" value={e.id} className="sr-only"
+                        checked={provider === e.id} disabled={missing} onChange={() => setProvider(e.id)}
+                      />
+                      <span className="block font-semibold">{e.name}{missing && <span className="ml-1 text-xs font-normal">(not set up)</span>}</span>
+                      <span className="mt-0.5 block text-xs text-muted">{e.note}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </fieldset>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Button onClick={applyEdits} disabled={approvedItems.length === 0}>
                 <Wand2 aria-hidden="true" className="h-4 w-4" /> Yes, edit my photo

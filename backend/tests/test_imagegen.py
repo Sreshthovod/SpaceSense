@@ -347,3 +347,74 @@ def test_image_providers_reports_configured_keys(client, monkeypatch):
     assert client.get("/api/image-providers").json() == {"cloudflare": False, "gemini": True}
     monkeypatch.setenv("CF_API_TOKEN", "t")
     assert client.get("/api/image-providers").json()["cloudflare"] is True
+
+
+# ---- provider choice in the photo redesign step (/generate-design) ----------------------------
+
+from tests.conftest import APPROVED, edit as design_edit  # noqa: E402
+
+
+def design(client, provider, **kw):
+    res = design_edit(client, **kw) if provider is None else client.post(
+        "/generate-design",
+        data={"room": json.dumps(__import__("tests.conftest", fromlist=["VALID"]).VALID),
+              "instructions": json.dumps(APPROVED), "approved": "true", "provider": provider},
+        files={"photo": ("room.png", PNG, "image/png")},
+    )
+    return res
+
+
+def test_design_with_cloudflare_edits_the_original_photo(client, cf):
+    res = design(client, "cloudflare")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["status"] == "edited" and body["provider"] == "cloudflare" and body["is_ai_generated"]
+    assert body["image_url"].startswith("data:image/jpeg;base64,")
+    assert body["instructions_used"] == APPROVED["items"]
+    req, _ = cf.calls[0]
+    assert req.full_url.endswith("flux-2-klein-4b")
+    assert b"Paint the walls warm white" in req.data and b"Keep the rug" in req.data  # approved changes only
+    assert b'name="input_image_0"' in req.data
+
+
+def test_design_with_gemini_uses_the_gemini_editor_even_if_server_default_is_mock(client, gem):
+    res = design(client, "gemini")
+    assert res.status_code == 200 and res.json()["provider"] == "gemini" and res.json()["image_url"]
+    assert gem.calls and "Paint the walls warm white" in gem.calls[0]["contents"][1]
+
+
+def test_design_without_provider_keeps_the_server_default(client):
+    res = design(client, "")
+    assert res.status_code == 200 and res.json()["status"] == "mock" and res.json()["image_url"] is None
+
+
+def test_design_gemini_without_key_is_503_and_original_unchanged(client):
+    res = design(client, "gemini")
+    assert res.status_code == 503 and "original photo is unchanged" in res.json()["details"][0]["message"]
+
+
+def test_design_cloudflare_failures_keep_the_original(client, cf):
+    cf.reply = http_error(429, [])
+    res = design(client, "cloudflare")
+    assert res.status_code == 429 and res.json()["error"] == "edit_failed"
+    assert "original photo is unchanged" in res.json()["details"][0]["message"]
+    assert design(client, "openai").status_code == 400
+
+
+def test_design_cloudflare_needs_approval_and_is_rate_limited(client, cf, monkeypatch):
+    res = client.post("/generate-design", data={"room": json.dumps(__import__("tests.conftest", fromlist=["VALID"]).VALID),
+                      "instructions": json.dumps(APPROVED), "provider": "cloudflare"},
+                      files={"photo": ("room.png", PNG, "image/png")})
+    assert res.status_code == 403 and cf.calls == []
+    monkeypatch.setenv("SPACESENSE_IMAGEGEN_RATE_PER_MIN", "1")
+    imagegen.reset_rate_limiter()
+    assert design(client, "cloudflare").status_code == 200
+    assert design(client, "cloudflare").status_code == 429
+
+
+def test_long_redesign_prompts_are_shortened_for_cloudflare(client, cf):
+    from schemas import EditInstructions, RoomRequest
+    from tests.conftest import VALID
+    long = EditInstructions(items=[f"Change number {i} to something rather elaborate and detailed" for i in range(30)], notes="n")
+    prompt = imagegen.redesign_prompt(RoomRequest(**VALID), long)
+    assert len(prompt) <= 2048 and "Change number 29" in prompt

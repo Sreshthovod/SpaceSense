@@ -93,12 +93,13 @@ export function sendChat({ form, photo, messages, recommendations }, signal) {
 
 /**
  * Edits the user's ORIGINAL photo with the changes they approved.
- * Only call this from an explicit user approval action.
+ * Only call this from an explicit user approval action. `provider` picks the image editor.
  */
-export function editRoomPhoto({ form, photo, items, notes = '' }, signal) {
+export function editRoomPhoto({ form, photo, items, notes = '', provider = '' }, signal) {
   const fd = roomForm(form, photo)
   fd.append('instructions', JSON.stringify({ items, notes }))
   fd.append('approved', 'true')
+  if (provider) fd.append('provider', provider) // 'gemini' | 'cloudflare'; empty = the server's default
   return post('/generate-design', fd, { signal, timeout: TIMEOUTS.edit })
 }
 

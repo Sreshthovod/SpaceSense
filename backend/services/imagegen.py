@@ -123,9 +123,14 @@ class EditInput:
     height: int
 
 
-def prepare_edit_image(data: bytes) -> EditInput:
-    """Check an upload and shrink it to what the Cloudflare edit model accepts."""
-    validate_upload(data)
+def prepare_edit_image(data: bytes, output_side: int | None = None, check_size: bool = True) -> EditInput:
+    """Check an upload and shrink it to what the Cloudflare edit model accepts.
+
+    The reference is always small (the model's limit). `output_side` asks for a larger result of the
+    same shape; without it the result is the size of the shrunk reference.
+    """
+    if check_size:
+        validate_upload(data)
     img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
     if img is None:
         raise ImageGenValidationError("The image could not be read.", "image")
@@ -140,7 +145,8 @@ def prepare_edit_image(data: bytes) -> EditInput:
     lo, hi = EDIT_OUTPUT_RANGE
     # Output matches the reference's shape, on a 16 px grid within the model's range.
     snap = lambda v: min(hi, max(lo, round(v / 16) * 16))
-    return EditInput(data=png.tobytes(), width=snap(w), height=snap(h))
+    grow = output_side / max(h, w) if output_side else 1.0
+    return EditInput(data=png.tobytes(), width=snap(w * grow), height=snap(h * grow))
 
 
 # ---- rate limiting ----------------------------------------------------------------------------
@@ -324,3 +330,23 @@ def gemini_generate(prompt: str, data: bytes | None = None, mime: str | None = N
         raise ImageGenError("Gemini returned no image", "rejected")
     image, image_mime = found
     return f"data:{image_mime};base64,{base64.b64encode(image).decode('ascii')}"
+
+
+# ---- photo redesign through Cloudflare ----------------------------------------------------------
+
+REDESIGN_OUTPUT_SIDE = 1024
+
+
+def redesign_prompt(req, instructions) -> str:
+    """The same approved-changes prompt Gemini gets, trimmed to fit Cloudflare's prompt limit."""
+    from services import gemini
+
+    prompt = gemini.build_edit_prompt(req, instructions)
+    if len(prompt) > PROMPT_MAX:
+        changes = "; ".join(instructions.items)
+        prompt = (
+            "Edit this photo of a room. Keep the same camera angle, walls, doors, windows and layout. "
+            f"Apply only these changes in a {req.style.replace('-', ' ')} style: {changes}. "
+            f"{instructions.notes} Return one photorealistic photo."
+        )
+    return prompt[:PROMPT_MAX]
