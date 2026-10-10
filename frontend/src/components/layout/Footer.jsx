@@ -14,12 +14,20 @@ export default function Footer({ onHome }) {
     <footer className="border-t border-line bg-cream">
       <div className="mx-auto grid max-w-7xl gap-10 px-5 py-14 sm:px-8 md:grid-cols-12">
         <div className="md:col-span-6">
-          <p className="flex items-center gap-2.5 font-display text-2xl font-semibold"><Home aria-hidden="true" strokeWidth={1.5} className="h-5 w-5 text-sage-dark" /> SpaceSense</p>
-          <p className="mt-3 max-w-sm text-sm text-muted">AI-assisted interior redesign, shaped around your style, budget and way of living. A hackathon prototype in active development.</p>
+          <a href="#top" onClick={onHome} aria-label="SpaceSense home" className="inline-flex items-center gap-2.5 font-display text-2xl font-semibold text-ink focus-visible:outline-2 focus-visible:outline-offset-2">
+            <Home aria-hidden="true" strokeWidth={1.5} className="h-5 w-5 text-sage-dark" /> SpaceSense
+          </a>
+          <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted">AI-assisted interior redesign, shaped around your style, budget and way of living. A hackathon prototype in active development.</p>
         </div>
         <nav aria-label="Footer" className="md:col-span-6 md:justify-self-end">
           <ul className="grid grid-cols-2 gap-x-12 gap-y-3 text-sm">
-            {links.map((l) => <li key={l.href}><a href={l.href} onClick={onHome} className="text-muted hover:text-ink hover:underline">{l.label}</a></li>)}
+            {links.map((l) => (
+              <li key={l.href}>
+                <a href={l.href} onClick={onHome} className="rounded-xs text-muted transition-colors hover:text-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2">
+                  {l.label}
+                </a>
+              </li>
+            ))}
           </ul>
         </nav>
       </div>

@@ -1,42 +1,84 @@
-export function FieldShell({ id, label, error, hint, children }) {
+export function FieldShell({ id, label, error, hint, required = true, children }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-semibold">{label}</label>
+      <label htmlFor={id} className="mb-1.5 flex items-center justify-between text-sm font-semibold text-ink">
+        <span>
+          {label}
+          {required ? (
+            <span className="ml-1 text-clay text-xs font-normal" title="Required">*</span>
+          ) : (
+            <span className="ml-1.5 text-xs font-normal text-muted">(optional)</span>
+          )}
+        </span>
+      </label>
       {children}
       {hint && !error && <p id={`${id}-hint`} className="mt-1 text-xs text-muted">{hint}</p>}
-      <p id={`${id}-error`} role="alert" className="mt-1 min-h-4 text-xs text-red-700">{error}</p>
+      {error && (
+        <p id={`${id}-error`} role="alert" className="mt-1.5 text-xs font-medium text-red-700">
+          {error}
+        </p>
+      )}
     </div>
   )
 }
 
 const inputClass = (error) =>
-  `w-full rounded-xl border bg-white px-3 py-2.5 text-sm ${error ? 'border-red-400' : 'border-line'}`
+  `w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-colors text-ink focus:outline-none focus:ring-2 focus:ring-sage-dark focus:border-sage-dark ${
+    error ? 'border-red-400 bg-red-50/40' : 'border-line hover:border-muted/50'
+  }`
 
-const describe = (id, error, hint) => [error && `${id}-error`, hint && `${id}-hint`].filter(Boolean).join(' ') || undefined
+const describe = (id, error, hint) =>
+  [error && `${id}-error`, hint && `${id}-hint`].filter(Boolean).join(' ') || undefined
 
-export function SelectField({ id, label, value, onChange, options, error, placeholder = 'Select…' }) {
+export function SelectField({ id, label, value, onChange, options, error, required = true, placeholder = 'Select…' }) {
   return (
-    <FieldShell id={id} label={label} error={error}>
-      <select id={id} name={id} value={value} onChange={(e) => onChange(e.target.value)} aria-invalid={!!error} aria-describedby={describe(id, error)} className={inputClass(error)}>
+    <FieldShell id={id} label={label} error={error} required={required}>
+      <select
+        id={id}
+        name={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-invalid={!!error}
+        aria-describedby={describe(id, error)}
+        className={`${inputClass(error)} cursor-pointer`}
+      >
         <option value="">{placeholder}</option>
-        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+        {options.map((o) => (
+          <option key={o} value={o}>{o}</option>
+        ))}
       </select>
     </FieldShell>
   )
 }
 
-export function NumberField({ id, label, value, onChange, error, hint, suffix, prefix, min, max, step = 'any' }) {
+export function NumberField({ id, label, value, onChange, error, hint, suffix, prefix, min, max, step = 'any', required = true }) {
   return (
-    <FieldShell id={id} label={label} error={error} hint={hint}>
+    <FieldShell id={id} label={label} error={error} hint={hint} required={required}>
       <div className="relative">
-        {prefix && <span aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">{prefix}</span>}
+        {prefix && (
+          <span aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted">
+            {prefix}
+          </span>
+        )}
         <input
-          id={id} name={id} type="number" inputMode="decimal" min={min} max={max} step={step}
-          value={value} onChange={(e) => onChange(e.target.value)}
-          aria-invalid={!!error} aria-describedby={describe(id, error, hint)}
-          className={`${inputClass(error)} ${prefix ? 'pl-7' : ''} ${suffix ? 'pr-10' : ''}`}
+          id={id}
+          name={id}
+          type="number"
+          inputMode="decimal"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          aria-invalid={!!error}
+          aria-describedby={describe(id, error, hint)}
+          className={`${inputClass(error)} ${prefix ? 'pl-8' : ''} ${suffix ? 'pr-9' : ''}`}
         />
-        {suffix && <span aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted">{suffix}</span>}
+        {suffix && (
+          <span aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted">
+            {suffix}
+          </span>
+        )}
       </div>
     </FieldShell>
   )
@@ -44,17 +86,42 @@ export function NumberField({ id, label, value, onChange, error, hint, suffix, p
 
 export function ToggleSwitch({ id, label, description, checked, onChange }) {
   return (
-    <div className="flex items-start justify-between gap-4 rounded-xl border border-line bg-cream p-4">
+    <div
+      role="button"
+      tabIndex={0}
+      aria-pressed={checked}
+      onClick={() => onChange(!checked)}
+      onKeyDown={(e) => {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault()
+          onChange(!checked)
+        }
+      }}
+      className="flex cursor-pointer items-start justify-between gap-4 rounded-xl border border-line bg-cream p-4 transition-colors hover:border-sage/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-dark"
+    >
       <div>
-        <label htmlFor={id} className="text-sm font-semibold">{label}</label>
-        <p id={`${id}-desc`} className="text-xs text-muted">{description}</p>
+        <span className="block text-sm font-semibold text-ink">{label} <span className="ml-1 text-xs font-normal text-muted">(optional)</span></span>
+        <p id={`${id}-desc`} className="mt-0.5 text-xs leading-relaxed text-muted">{description}</p>
       </div>
       <button
-        id={id} type="button" role="switch" aria-checked={checked} aria-describedby={`${id}-desc`}
-        onClick={() => onChange(!checked)}
-        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${checked ? 'bg-sage' : 'bg-line'}`}
+        id={id}
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-describedby={`${id}-desc`}
+        onClick={(e) => {
+          e.stopPropagation()
+          onChange(!checked)
+        }}
+        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-dark ${
+          checked ? 'bg-sage-dark' : 'bg-line'
+        }`}
       >
-        <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : ''}`} />
+        <span
+          className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+            checked ? 'translate-x-5' : ''
+          }`}
+        />
       </button>
     </div>
   )

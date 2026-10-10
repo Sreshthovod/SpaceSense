@@ -1,42 +1,39 @@
 import { useEffect, useRef } from 'react'
-import { ArrowLeft, TriangleAlert } from 'lucide-react'
-import { SAMPLE_FURNITURE } from '../../data/sampleData'
+import { ArrowLeft, Info } from 'lucide-react'
 import Button from '../ui/Button'
-import BeforeAfter from './BeforeAfter'
-import ConstraintChecks from './ConstraintChecks'
+import ChatPanel from './ChatPanel'
+import DesignStudio from './DesignStudio'
 import FurniturePanel from './FurniturePanel'
+import RecommendationsPanel from './RecommendationsPanel'
+import RoomAnalysisPanel from './RoomAnalysisPanel'
 
-function pickItems(budget) {
-  const picked = []
-  let total = 0
-  for (const item of [...SAMPLE_FURNITURE].sort((a, b) => a.priority - b.priority)) {
-    if (total + item.price <= budget) { picked.push(item); total += item.price }
-  }
-  return picked
-}
-
-export default function ResultsSection({ form, imageUrl, onReset }) {
+export default function ResultsSection({ form, photo, imageUrl, result, onReset }) {
   const headingRef = useRef(null)
   useEffect(() => { headingRef.current?.focus() }, [])
-  const budget = Number(form.budget)
-  const items = pickItems(budget)
-  const spent = items.reduce((s, i) => s + i.price, 0)
+  const { analysis, products } = result
+  const roomTypeName = form.roomType ? form.roomType.toLowerCase() : 'room'
 
   return (
-    <section aria-labelledby="results-heading" className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-      <Button variant="ghost" onClick={onReset}><ArrowLeft aria-hidden="true" className="h-4 w-4" /> Start over</Button>
-      <h2 id="results-heading" ref={headingRef} tabIndex={-1} className="mt-3 font-display text-3xl font-semibold">
-        Your {form.roomType.toLowerCase()} redesign plan
-      </h2>
-      <p className="text-sm text-muted">{form.length} × {form.width} × {form.height} ft{form.vastu ? ' · Vastu on' : ''}</p>
-      <div role="status" className="mt-4 flex items-start gap-2 rounded-xl border border-clay/40 bg-clay/10 p-3 text-sm">
-        <TriangleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-clay" />
-        Prototype results: the redesign image, furniture and prices below are placeholders. AI redesign and real product recommendations are not integrated yet.
+    <section aria-labelledby="results-heading" className="mx-auto max-w-7xl px-5 py-12 sm:px-8">
+      <Button variant="ghost" onClick={onReset} className="pl-3 pr-5">
+        <ArrowLeft aria-hidden="true" className="h-4 w-4" /> Start over
+      </Button>
+      <h1 id="results-heading" ref={headingRef} tabIndex={-1} className="mt-4 font-display text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl focus:outline-none">
+        Your {roomTypeName} plan
+      </h1>
+      <p className="mt-2 text-sm text-muted sm:text-base">{form.length} × {form.width} × {form.height} ft{form.vastu ? ' · Vastu on' : ''}</p>
+      <div className="mt-4 flex items-start gap-2 rounded-xl border border-line bg-sand/60 p-3 text-sm">
+        <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-sage-dark" />
+        Review the recommendations first. Your photo is only edited if you approve, and products come from a small sample catalog.
       </div>
-      <div className="mt-6"><BeforeAfter originalUrl={imageUrl} styleId={form.style} /></div>
+      <div className="mt-6"><RecommendationsPanel analysis={analysis} /></div>
+      <div className="mt-6"><ChatPanel form={form} photo={photo} recommendations={analysis.recommendations} /></div>
+      <div className="mt-6">
+        <DesignStudio form={form} photo={photo} originalUrl={imageUrl} recommendations={analysis.recommendations} />
+      </div>
       <div className="mt-6 grid gap-6 lg:grid-cols-[3fr_2fr]">
-        <FurniturePanel items={items} budget={budget} />
-        <ConstraintChecks form={form} spent={spent} />
+        <FurniturePanel products={products} />
+        <RoomAnalysisPanel analysis={analysis} />
       </div>
     </section>
   )
