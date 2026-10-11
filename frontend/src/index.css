@@ -224,6 +224,34 @@ body {
 .how-lift { transition: transform var(--dur-slow) var(--ease-out), border-color var(--dur-slow) var(--ease-out), box-shadow var(--dur-slow) var(--ease-out); }
 .how-num { transition: color var(--dur) var(--ease-out); }
 .how-zoom { transition: transform 0.7s var(--ease-out); }
+/* Image Lab. The empty canvas sketch draws in when the panel is revealed; the glow drifts slowly. */
+@keyframes lab-draw { to { stroke-dashoffset: 0; } }
+@keyframes lab-glow { from { transform: translate(-6%, -4%) scale(1); } to { transform: translate(6%, 5%) scale(1.08); } }
+@keyframes lab-develop { from { opacity: 0; transform: scale(0.985); } to { opacity: 1; transform: none; } }
+@keyframes lab-twinkle { 0%, 100% { opacity: 0.55; transform: scale(0.92) rotate(0deg); } 50% { opacity: 1; transform: scale(1.04) rotate(8deg); } }
+.lab-draw { -webkit-mask-image: radial-gradient(ellipse 40% 34% at 50% 54%, transparent 55%, #000 100%); mask-image: radial-gradient(ellipse 40% 34% at 50% 54%, transparent 55%, #000 100%); }
+.lab-draw path { stroke-dasharray: 1; stroke-dashoffset: 0; }
+.js .lab-canvas .lab-draw path { stroke-dashoffset: 1; }
+.js .lab-canvas.is-visible .lab-draw path { animation: lab-draw 1.4s var(--ease-out) forwards; animation-delay: calc(250ms + var(--i, 0) * 70ms); }
+.lab-glow {
+  background: radial-gradient(40% 45% at 50% 45%, color-mix(in srgb, var(--color-sage) 22%, transparent), transparent 70%);
+  animation: lab-glow 14s ease-in-out infinite alternate;
+}
+.lab-empty { animation: fade-in 0.6s var(--ease-out) 0.5s backwards; }
+.lab-develop { animation: lab-develop 0.6s var(--ease-out) backwards; }
+.lab-twinkle { animation: lab-twinkle 3.2s ease-in-out infinite; transform-origin: center; }
+.lab-field { transition: border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out); }
+.lab-field:focus { border-color: var(--color-sage-dark); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-sage) 25%, transparent); }
+.lab-chip, .lab-drop { transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
+.lab-chip:active:not(:disabled), .lab-go:active:not(:disabled) { transform: scale(0.97); }
+.lab-go { transition: background-color var(--dur) var(--ease-out), transform var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out); }
+.lab-go:hover:not(:disabled) { background: var(--color-ink); transform: translateY(-2px); box-shadow: 0 10px 24px -14px color-mix(in srgb, var(--color-ink) 60%, transparent); }
+.lab-drop.is-dragging { animation: pulse-ring 1.2s ease infinite; }
+.lab-link { background: linear-gradient(currentColor, currentColor) left bottom / 0 1px no-repeat; transition: background-size var(--dur) var(--ease-out); }
+.lab-link:hover, .lab-link:focus-visible { background-size: 100% 1px; }
+.lab-collapse { display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--dur) var(--ease-out); }
+.lab-collapse[data-open='true'] { grid-template-rows: 1fr; }
+
 /* Underlined on touch screens; with a mouse the underline draws in on hover. */
 .how-link { background: linear-gradient(currentColor, currentColor) left bottom / 100% 1px no-repeat; transition: background-size var(--dur) var(--ease-out), color var(--dur) var(--ease-out); }
 .how-link:hover, .how-link:focus-visible { color: var(--color-ink); }
@@ -386,6 +414,9 @@ body {
     transition: none;
   }
   .js .how-card .how-seq { opacity: 1; }
+  .js .lab-canvas .lab-draw path { stroke-dashoffset: 0; animation: none !important; }
+  .lab-glow, .lab-twinkle, .lab-drop.is-dragging { animation: none !important; }
+  .lab-go:hover:not(:disabled) { transform: none; }
 
   .hero-photo,
   .hero-stagger > *,
