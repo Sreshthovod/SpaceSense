@@ -6,6 +6,7 @@ import { STUDIO_LINKS } from '../components/results/studioLinks'
 
 const LANDING_SECTIONS = [
   { id: 'how-it-works', label: 'How it works', icon: ListChecks },
+  { id: 'vastu', label: 'Vastu', icon: Compass, keywords: 'vaastu direction compass north east' },
   { id: 'styles', label: 'Design styles', icon: LayoutGrid },
   { id: 'redesign', label: 'Plan my room', icon: PenLine, keywords: 'start form upload photo redesign' },
   { id: 'image-lab', label: 'Image lab', icon: ImageIcon, keywords: 'generate ai picture' },

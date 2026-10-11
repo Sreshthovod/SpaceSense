@@ -20,6 +20,8 @@ SpaceSense is a **consult-first** design assistant. It only edits your photo aft
 | Photo editing | Mock: says no image was created, original unchanged | Gemini edits the original photo; no text-to-image fallback |
 | Products | Curated catalog of real IKEA India listings (price, photo and link checked on the date shown) plus unpriced ideas with retailer search links | Same; optionally add live Google Shopping results via SerpAPI |
 
+**Vastu, built in.** A landing-page section (`#vastu`) explains where SpaceSense uses Vastu, with an interactive direction rose. Its copy lives in `frontend/src/data/vastuGuide.js` and must only describe rules the app actually applies: `backend/services/vastu.py` for the written notes and `frontend/src/designer/model/compass.js` for the designer's check. Update it when those change. "Plan with Vastu" switches the brief's Vastu toggle on.
+
 Image editing is instructed to keep the same room, camera angle, walls, doors and windows, and to change only the approved items. AI edits can still introduce inaccuracies, so check results visually.
 
 ## Prerequisites

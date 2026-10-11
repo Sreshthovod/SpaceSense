@@ -13,7 +13,7 @@ describe('Navbar', () => {
     render(<Navbar studio={false} onOpenDesigner={() => {}} />)
     const nav = screen.getByRole('navigation', { name: 'Main' })
     const labels = Array.from(nav.querySelectorAll('a')).map((a) => a.textContent)
-    expect(labels).toEqual(expect.arrayContaining(['How It Works', 'Design Styles', 'Image Lab', 'Design My Space']))
+    expect(labels).toEqual(expect.arrayContaining(['How It Works', 'Vastu', 'Design Styles', 'Image Lab', 'Design My Space']))
     expect(screen.queryByRole('button', { name: 'Start over' })).toBeNull()
   })
 

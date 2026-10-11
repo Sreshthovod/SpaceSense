@@ -6,6 +6,7 @@ import Hero from './components/landing/Hero'
 import BeforeAfter from './components/landing/BeforeAfter'
 import HowItWorks from './components/landing/HowItWorks'
 import DesignStyles from './components/landing/DesignStyles'
+import VastuSection from './components/landing/VastuSection'
 import FinalCTA from './components/landing/FinalCTA'
 import ImageGenerator from './components/imagegen/ImageGenerator'
 import useReveal from './hooks/useReveal'
@@ -101,6 +102,15 @@ export default function App() {
     scrollToForm(reduced)
   }
 
+  const { toast } = useToast()
+  // "Plan with Vastu" on the landing page: switch the brief's Vastu toggle on and go to the form.
+  const startVastu = (e) => {
+    e?.preventDefault()
+    setForm((f) => ({ ...f, vastu: true }))
+    toast('Vastu preferences are on. Add your entry direction in step 2.')
+    scrollToForm(reduced)
+  }
+
   const setImage = (file) => setImageState({ file, url: file ? URL.createObjectURL(file) : '' })
 
   // A ref, not state, so two clicks in the same tick can't both pass the guard.
@@ -141,7 +151,6 @@ export default function App() {
 
   const snapshot = (extra) => ({ form, ...extra })
 
-  const { toast } = useToast()
   const onSaveLook = (extra) => {
     setLooks(saveLook(snapshot(extra)))
     toast('Brief saved in this browser.')
@@ -206,6 +215,7 @@ export default function App() {
             <Hero onStart={leaveResults} onOpenDesigner={openDesigner} />
             <BeforeAfter />
             <HowItWorks />
+            <VastuSection onStartVastu={startVastu} onOpenDesigner={openDesigner} />
             <DesignStyles onSelectStyle={selectStyle} selected={form.style} />
             <section id="redesign" aria-labelledby="form-heading" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:py-28">
               <p className="eyebrow">Design My Space</p>

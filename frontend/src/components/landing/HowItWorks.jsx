@@ -22,7 +22,7 @@ function Stat({ value, label }) {
 
 const steps = [
   { n: 1, title: 'Share your space', text: 'Upload a room photo and enter your room dimensions.' },
-  { n: 2, title: 'Make it yours', text: 'Choose your style, budget, and optional Vastu preferences.' },
+  { n: 2, title: 'Make it yours', text: 'Choose your style, budget, and optional Vastu preferences.', more: { href: '#vastu', label: 'How Vastu works here' } },
   { n: 3, title: 'Get advice, then decide', text: 'Read written recommendations and shop budget-conscious pieces. Your photo is only edited if you approve it.' },
 ]
 
@@ -41,6 +41,7 @@ export default function HowItWorks() {
               <span className="font-display text-4xl font-medium text-sage sm:text-5xl">0{s.n}</span>
               <h3 className="mt-4 font-display text-2xl font-medium sm:text-3xl">{s.title}</h3>
               <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted sm:text-base">{s.text}</p>
+              {s.more && <a href={s.more.href} className="mt-2 inline-block rounded-sm text-sm font-medium text-sage-dark underline underline-offset-4 hover:text-ink">{s.more.label}</a>}
             </li>
           ))}
         </ol>

@@ -9,6 +9,7 @@ import { isMac } from '../../utils/fuzzy'
 
 const links = [
   { href: '#how-it-works', id: 'how-it-works', label: 'How It Works' },
+  { href: '#vastu', id: 'vastu', label: 'Vastu' },
   { href: '#styles', id: 'styles', label: 'Design Styles' },
   { href: '#image-lab', id: 'image-lab', label: 'Image Lab' },
 ]
@@ -46,7 +47,7 @@ export default function Navbar({ onHome, studio, onOpenDesigner, onReset, onOpen
   const compact = useNavCompact()
   const { user, logout } = useAuth()
   const sectionIds = useMemo(
-    () => (studio ? STUDIO_LINKS.map((l) => l.id) : ['top', 'how-it-works', 'styles', 'redesign', 'image-lab']),
+    () => (studio ? STUDIO_LINKS.map((l) => l.id) : ['top', 'how-it-works', 'vastu', 'styles', 'redesign', 'image-lab']),
     [studio],
   )
   const active = useActiveSection(sectionIds)
@@ -90,7 +91,7 @@ export default function Navbar({ onHome, studio, onOpenDesigner, onReset, onOpen
             ))}
           </ul>
         ) : (
-          <ul className="hidden items-center gap-8 text-[0.78rem] uppercase tracking-[0.14em] lg:flex">
+          <ul className="hidden items-center gap-5 whitespace-nowrap text-[0.78rem] uppercase tracking-[0.14em] lg:flex xl:gap-8">
             {links.map((l) => (
               <li key={l.href}>
                 <a
@@ -104,7 +105,8 @@ export default function Navbar({ onHome, studio, onOpenDesigner, onReset, onOpen
               </li>
             ))}
             {onOpenDesigner && (
-              <li>
+              // Below xl there isn't room; the hero, the Vastu section and Cmd+K still open the designer.
+              <li className="hidden xl:list-item">
                 <button type="button" onClick={onOpenDesigner} className="nav-link rounded-sm uppercase tracking-[0.14em] text-muted transition-colors hover:text-ink">
                   3D Designer
                 </button>
@@ -127,9 +129,9 @@ export default function Navbar({ onHome, studio, onOpenDesigner, onReset, onOpen
             <ThemeToggle />
           </div>
         ) : (
-          <div className="hidden items-center gap-5 lg:flex">
+          <div className="hidden items-center gap-3 whitespace-nowrap lg:flex xl:gap-5">
             <AccountLink user={user} />
-            <a href="#redesign" onClick={go} className="press bg-ink px-5 py-2.5 text-[0.8rem] font-medium uppercase tracking-[0.12em] text-cream transition-colors hover:bg-brass">
+            <a href="#redesign" onClick={go} className="press bg-ink px-4 py-2.5 xl:px-5 text-[0.8rem] font-medium uppercase tracking-[0.12em] text-cream transition-colors hover:bg-brass">
             Design My Space
             </a>
             <SearchButton onClick={onOpenPalette} />
