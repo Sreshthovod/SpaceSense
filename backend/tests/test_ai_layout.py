@@ -252,3 +252,97 @@ def test_schema_has_a_placeholder_wall_enum_when_the_catalog_has_no_wall_pieces(
     opts = LayoutOptions(floor=FLOOR, wall=[])
     assert gemini.layout_schema(opts)["properties"]["wall"]["items"]["properties"]["type"]["enum"] == ["none"]
     assert "- none" in gemini.build_layout_prompt(RoomRequest(**ROOM), opts, False)
+
+
+# ---- Vastu mode -------------------------------------------------------------------------------
+
+def test_without_vastu_the_prompt_says_nothing_about_it(client, fake):
+    call(client, room={**ROOM, "vastu": False}, opts=options(compass_back="north"))
+    assert "VASTU" not in prompt_of(fake)
+
+
+def test_vastu_mode_translates_the_guidelines_to_the_designer_walls(client, fake):
+    res = call(client, room={**ROOM, "vastu": True}, opts=options(compass_back="north"))
+    assert res.status_code == 200
+    p = prompt_of(fake)
+    assert "VASTU MODE" in p
+    assert "back wall = north, right wall = east, front wall = south, left wall = west" in p
+    # Living room: heavy furniture south or west, TV south-east, north-east kept clear.
+    assert "south side (the front wall) or west side (the left wall)" in p
+    assert "north-east corner (the back-right corner)" in p
+    assert "south-east corner (the front-right corner)" in p
+    assert "the placement rules above allow" in p  # Vastu never overrides overlap or door rules
+
+
+def test_vastu_directions_follow_the_room_orientation(client, fake):
+    call(client, room={**ROOM, "room_type": "Bedroom", "vastu": True}, opts=options(compass_back="east"))
+    p = prompt_of(fake)
+    assert "back wall = east, right wall = south, front wall = west, left wall = north" in p
+    assert "south-west corner (the front-right corner)" in p  # the bed's corner when the back wall faces east
+
+
+def test_vastu_with_a_diagonal_orientation_names_corners_for_the_cardinal_sides(client, fake):
+    call(client, room={**ROOM, "vastu": True}, opts=options(compass_back="north-east"))
+    p = prompt_of(fake)
+    assert "back wall = north-east" in p
+    assert "south side (the front-right corner)" in p and "north-east corner (the back wall)" in p
+
+
+def test_vastu_without_an_orientation_does_not_guess(client, fake):
+    call(client, room={**ROOM, "vastu": True})
+    p = prompt_of(fake)
+    assert "orientation is unknown" in p and "do not place anything by compass direction" in p
+
+
+def test_an_unknown_compass_direction_is_a_422(client, fake):
+    assert call(client, opts=options(compass_back="up")).status_code == 422
+
+
+# ---- several layouts in one request ------------------------------------------------------------
+
+def test_by_default_no_alternatives_are_asked_for(client, fake):
+    call(client)
+    schema = fake.calls[0]["config"].response_json_schema
+    assert "alternatives" not in schema["properties"]
+    assert "ALTERNATIVES" not in prompt_of(fake)
+
+
+def test_variants_ask_for_alternative_layouts_and_return_them(client, fake):
+    alt = {"summary": "Sofa on the left wall.", "floor": [{"type": "sofa", "x": -4.5, "z": 0, "rotation": 90}], "wall": []}
+    fake.default = reply({**GOOD, "alternatives": [alt, alt, alt]})
+    fake._responses = [fake.default]
+    res = call(client, opts=options(variants=3))
+    assert res.status_code == 200
+    schema = fake.calls[0]["config"].response_json_schema
+    assert schema["properties"]["alternatives"]["maxItems"] == 2
+    assert "also return 2 more layouts in `alternatives`" in prompt_of(fake)
+    body = res.json()
+    assert len(body["alternatives"]) == 2  # never more than asked for
+    assert body["alternatives"][0]["floor"][0]["type"] == "sofa"
+
+
+def test_alternatives_are_filtered_to_the_catalog_too(client, fake):
+    alt = {"summary": "x", "floor": [{"type": "spaceship", "x": 0, "z": 0, "rotation": 0}, {"type": "pouf", "x": 1, "z": 1, "rotation": 0}], "wall": []}
+    fake.default = reply({**GOOD, "alternatives": [alt]})
+    fake._responses = [fake.default]
+    body = call(client, opts=options(variants=2)).json()
+    assert [p["type"] for p in body["alternatives"][0]["floor"]] == ["pouf"]
+
+
+def test_too_many_variants_is_a_422(client, fake):
+    assert call(client, opts=options(variants=4)).status_code == 422
+
+
+def test_the_prompt_carries_a_recipe_for_the_room_type(client, fake):
+    call(client)
+    p = prompt_of(fake)
+    assert "FOR A LIVING ROOM:" in p and "facing the TV unit on the opposite wall" in p
+    assert "slivers of a few inches" in p
+
+
+def test_vastu_mode_gives_coordinates_for_each_compass_zone(client, fake):
+    call(client, room={**ROOM, "vastu": True}, opts=options(compass_back="north"))
+    p = prompt_of(fake)
+    # 12 x 14 room, 1.5 ft in from the walls: the north-east (back-right) corner is near x 4.5, z -5.5.
+    assert "north-east ≈ x 4.5, z -5.5" in p and "south-west ≈ x -4.5, z 5.5" in p
+    assert "A pooja unit belongs in the north-east zone" in p

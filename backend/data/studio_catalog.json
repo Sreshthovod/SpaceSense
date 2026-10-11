@@ -50,6 +50,18 @@
     "kitchen-trolley": {"category": "furniture", "products": ["ikea-kungsfors-trolley"]},
     "wall-cabinet": {"category": "furniture", "products": []},
     "range-hood": {"category": "appliances", "products": []},
-    "spice-rack": {"category": "accessories", "products": ["ikea-bekvam-spice-rack"]}
+    "spice-rack": {"category": "accessories", "products": ["ikea-bekvam-spice-rack"]},
+    "wall-tv": {"category": "appliances", "products": []},
+    "bench": {"category": "furniture", "products": []},
+    "recliner": {"category": "furniture", "products": []},
+    "divan": {"category": "furniture", "products": []},
+    "jhoola": {"category": "furniture", "products": []},
+    "console-table": {"category": "furniture", "products": []},
+    "round-dining-table": {"category": "furniture", "products": []},
+    "crib": {"category": "furniture", "products": []},
+    "pooja-unit": {"category": "furniture", "products": []},
+    "upright-piano": {"category": "accessories", "products": []},
+    "aquarium": {"category": "accessories", "products": []},
+    "room-divider": {"category": "accessories", "products": []}
   }
 }

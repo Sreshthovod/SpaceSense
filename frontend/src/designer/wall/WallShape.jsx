@@ -84,6 +84,14 @@ export default function WallShape({ catalogId, w, h, color }) {
           {[-0.4, -0.15, 0.1, 0.35].map((t) => <rect key={t} x={t * w - 0.07} y={y + h * 0.55 - 0.3} width="0.14" height="0.3" fill="#a65f3c" />)}
         </>
       )
+    case 'wall-tv':
+      return (
+        <>
+          <rect x={x} y={y} width={w} height={h} rx="0.06" fill={color} />
+          <rect x={x + 0.08} y={y + 0.08} width={Math.max(0, w - 0.16)} height={Math.max(0, h - 0.24)} fill="#2b3a42" />
+          <path d={`M${x + w * 0.12} ${y + h * 0.2} L${x + w * 0.3} ${y + 0.08}`} stroke="#ffffff" strokeOpacity="0.25" strokeWidth="0.06" />
+        </>
+      )
     case 'door':
       return (
         <>

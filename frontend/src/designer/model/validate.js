@@ -3,7 +3,7 @@
  * it can't. Older versions are migrated, wrong values are replaced with defaults, unknown items are
  * dropped with a notice, and every placed item is clamped back inside the room.
  */
-import { STYLES } from '../../data/sampleData'
+import { DIRECTIONS, STYLES } from '../../data/sampleData'
 import { floorItemSpec, wallItemSpec } from './catalog'
 import {
   DEMO, DIMENSIONS, FLOOR_MATERIALS, ITEM_DEFAULTS, SCHEMA_VERSION, WALLS, clampDimension, defaultFloor, defaultWall,
@@ -112,6 +112,7 @@ export function validateDesign(raw) {
       replaced: {},
     },
     photo: isObject(d.photo) && typeof d.photo.name === 'string' ? { name: d.photo.name.slice(0, 200) } : null,
+    facing: DIRECTIONS.includes(d.facing) ? d.facing : null,
   }
   return { design, notices: [...new Set(notices)] }
 }

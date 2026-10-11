@@ -1,8 +1,8 @@
+import { DIRECTIONS, STYLES } from '../../data/sampleData'
 import {
   DIMENSIONS, FLOOR_MATERIALS, ITEM_DEFAULTS, PAINTS, WALLS, clampDimension, collectionFor, findPlaced, isHexColor, onWall,
   roomSize, wallDims,
 } from './design'
-import { STYLES } from '../../data/sampleData'
 import { floorItemSpec, wallItemSpec } from './catalog'
 import { FLOOR_ROTATIONS, FLOOR_SCALE, FLOOR_SHEENS, WALLPAPERS, WALL_SHEENS } from './finishes'
 import { alignToWall, clampToRoom, findFloorSpot, settleItems } from './floorPlacement'
@@ -192,6 +192,11 @@ function applyAction(design, action) {
     case 'setStyle': {
       if (!STYLES.some((s) => s.id === action.style) || action.style === design.style) return design
       return { ...design, style: action.style }
+    }
+    case 'setFacing': {
+      // Which compass side the back wall is on (null: unknown). Only compass labels and Vastu checks use it.
+      const facing = DIRECTIONS.includes(action.facing) ? action.facing : null
+      return facing === (design.facing ?? null) ? design : { ...design, facing }
     }
     case 'replaceDesign': {
       // Load, reset or recover: the new design must already be validated. Undoable like any edit.

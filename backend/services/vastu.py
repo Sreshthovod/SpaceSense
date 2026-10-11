@@ -107,3 +107,64 @@ def describe_for_prompt(req: RoomRequest) -> str:
         "pieces you can see (bed, sofa, desk, stove) and say where they conflict with a guideline or already "
         "follow it, with a practical fix that needs no renovation. Do not invent anything you cannot see."
     )
+
+
+# --- 3D designer: the same guidelines, resolved to the designer's walls and corners ---
+
+_DESIGNER_WALLS = {0: "back wall", 90: "right wall", 180: "front wall", 270: "left wall"}
+_DESIGNER_CORNERS = {45: "back-right corner", 135: "front-right corner", 225: "front-left corner", 315: "back-left corner"}
+
+
+def designer_place(direction: str, compass_back: str) -> str:
+    """Where a compass direction falls in the designer's room, given the side the back wall is on.
+
+    With the back wall due north, south is the front wall; with it north-east, south is the front-right corner.
+    """
+    rel = (_BEARING[direction] - _BEARING[compass_back]) % 360
+    return _DESIGNER_WALLS.get(rel) or _DESIGNER_CORNERS[rel]
+
+
+def designer_rules(room_type: str, compass_back: str) -> list[str]:
+    """This room type's Vastu guidelines with every direction named as a designer wall or corner."""
+    labels = {}
+    for key, direction in _PHRASE.items():
+        kind = "corner" if len(key) == 2 else "side"
+        labels[key] = f"{direction} {kind} (the {designer_place(direction, compass_back)})"
+    return [rule.format(**labels) for rule in RULES.get(room_type, [])]
+
+
+def _zone_point(rel: int, width: float, length: float) -> tuple[float, float]:
+    """A spot near a designer wall or corner (1.5 ft in from the walls), in the layout's x/z feet."""
+    hx, hz = max(0.0, width / 2 - 1.5), max(0.0, length / 2 - 1.5)
+    return {0: (0, -hz), 45: (hx, -hz), 90: (hx, 0), 135: (hx, hz), 180: (0, hz), 225: (-hx, hz), 270: (-hx, 0), 315: (-hx, -hz)}[rel]
+
+
+def designer_prompt(room_type: str, compass_back: str | None, width: float | None = None, length: float | None = None) -> str:
+    """The Vastu section of the 3D layout prompt. Empty orientation: say so instead of guessing."""
+    if compass_back is None:
+        return ("VASTU: the user wants a Vastu-friendly layout but the room's compass orientation is unknown, "
+                "so do not place anything by compass direction; mention this in the summary.")
+    sides = ", ".join(f"{w} = {d}" for w, d in (
+        ("back wall", compass_back),
+        ("right wall", DIRECTIONS[(DIRECTIONS.index(compass_back) + 2) % 8]),
+        ("front wall", DIRECTIONS[(DIRECTIONS.index(compass_back) + 4) % 8]),
+        ("left wall", DIRECTIONS[(DIRECTIONS.index(compass_back) + 6) % 8]),
+    ))
+    rules = "\n".join(f"- {r}" for r in designer_rules(room_type, compass_back))
+    zones = ""
+    if width and length:
+        spots = []
+        for key, direction in _PHRASE.items():
+            x, z = _zone_point((_BEARING[direction] - _BEARING[compass_back]) % 360, width, length)
+            spots.append(f"{direction} ≈ x {x:g}, z {z:g}")
+        zones = "Where each compass zone is in these coordinates: " + "; ".join(spots) + ".\n"
+    return (
+        "VASTU MODE: the user wants the layout to follow common Vastu guidelines. "
+        f"Compass sides of this room: {sides}.\n{zones}"
+        f"Guidelines for a {room_type}, already translated to this room's walls and corners:\n{rules}\n"
+        "Follow these as far as the placement rules above allow (they always win: never overlap pieces or block the door). "
+        "Where a piece's facing matters, choose the rotation that points it the right way. "
+        "A pooja unit belongs in the north-east zone and an aquarium in the north, east or north-east; keep wardrobes, "
+        "bookshelves and other tall, heavy pieces out of the north-east. "
+        "In the summary, say briefly which Vastu guidelines the layout follows."
+    )

@@ -20,6 +20,7 @@ const FINISH = {
   'l-sofa': 'fabric', 'bean-bag': 'fabric', 'single-bed': 'fabric', 'shoe-cabinet': 'lacquer', 'dressing-table': 'lacquer',
   'filing-cabinet': 'metal', 'work-lamp': 'metal', 'toy-storage': 'lacquer', 'base-cabinet': 'lacquer', 'sink-cabinet': 'lacquer',
   'corner-cabinet': 'lacquer', 'tall-cabinet': 'lacquer', stove: 'lacquer', fridge: 'lacquer', 'bar-stool': 'metal', 'kitchen-trolley': 'metal',
+  bench: 'fabric', recliner: 'fabric', divan: 'fabric', 'pooja-unit': 'lacquer', 'upright-piano': 'lacquer', crib: 'lacquer',
   vase: 'ceramic', 'table-lamp': 'fabric', 'floor-lamp': 'fabric', plant: 'fabric', 'small-plant': 'fabric',
 }
 
@@ -415,6 +416,173 @@ export default function FloorItemShape({ catalogId, w, d, h, color }) {
           <Part position={[0, h * 0.3, -0.1]} rotation={[-0.35, 0, 0]} scale={[0.05, h * 0.55, 0.05]} mat={metal} />
           <Part position={[0, h * 0.72, d * 0.12]} rotation={[0.9, 0, 0]} scale={[0.05, h * 0.45, 0.05]} mat={metal} />
           <Part geometry={cone} position={[0, h * 0.82, d / 2 - 0.15]} rotation={[Math.PI * 0.85, 0, 0]} scale={[0.4, 0.35, 0.4]} mat={metal} />
+        </>
+      )
+    }
+    case 'bench': {
+      const leg = 0.14
+      return (
+        <>
+          {[[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sz]) => (
+            <Part key={`${sx}${sz}`} position={[sx * (w / 2 - 0.2), h * 0.3, sz * (d / 2 - 0.2)]} scale={[leg, h * 0.6, leg]} mat={material(WOOD)} />
+          ))}
+          <Part position={[0, h * 0.62, 0]} scale={[w, 0.12, d]} mat={material(WOOD)} />
+          <Part position={[0, h * 0.82, 0]} scale={[w - 0.1, h * 0.3, d - 0.1]} mat={m} />
+        </>
+      )
+    }
+    case 'recliner': {
+      const arm = 0.55
+      const seatTop = h * 0.4
+      return (
+        <>
+          <Part position={[0, 0.12, 0]} scale={[w * 0.9, 0.24, d * 0.85]} mat={material(DARK)} />
+          <Part position={[0, seatTop / 2 + 0.1, 0.25]} scale={[w - arm * 2, seatTop, d - 0.9]} mat={m} />
+          <Part position={[0, h * 0.55, -d / 2 + 0.45]} rotation={[-0.18, 0, 0]} scale={[w - arm * 2 + 0.1, h * 0.95, 0.75]} mat={m} />
+          <Part position={[0, h * 0.62, -d / 2 + 0.3]} scale={[w * 0.4, 0.45, 0.4]} mat={m} />
+          {[-1, 1].map((side) => (
+            <Part key={side} position={[side * (w / 2 - arm / 2), h * 0.32, 0]} scale={[arm, h * 0.6, d * 0.92]} mat={m} />
+          ))}
+        </>
+      )
+    }
+    case 'divan': {
+      const base = h * 0.5
+      return (
+        <>
+          <Part position={[0, base / 2, 0]} scale={[w, base, d]} mat={material(WOOD)} />
+          <Part position={[0, base + 0.25, 0]} scale={[w - 0.15, 0.5, d - 0.15]} mat={m} />
+          {[-1, 1].map((side) => (
+            <Part key={side} geometry={upright} position={[side * (w / 2 - 0.4), base + 0.75, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[0.55, d - 0.4, 0.55]} mat={material('#e0b25a', 'fabric')} />
+          ))}
+          {[-0.28, 0, 0.28].map((f) => (
+            <Part key={f} position={[f * w, base + 0.85, -d / 2 + 0.35]} rotation={[-0.2, 0, 0]} scale={[w * 0.24, 0.85, 0.3]} mat={material('#f2eadc', 'fabric')} />
+          ))}
+        </>
+      )
+    }
+    case 'jhoola': {
+      const post = 0.2
+      const seatY = 1.6
+      return (
+        <>
+          {[-1, 1].map((side) => (
+            <group key={side}>
+              {[-1, 1].map((fz) => (
+                <Part key={fz} position={[side * (w / 2 - post), h / 2, fz * (d / 2 - post) * 0.7]} rotation={[fz * 0.18, 0, 0]} scale={[post, h, post]} mat={m} />
+              ))}
+              <Part position={[side * (w / 2 - post), 0.06, 0]} scale={[post, 0.12, d]} mat={m} />
+              <Part position={[side * (w / 2 - 0.6), (seatY + h - 0.2) / 2, 0]} scale={[0.04, h - 0.2 - seatY, 0.04]} mat={material('#9a9488', STEEL)} />
+            </group>
+          ))}
+          <Part position={[0, h - 0.1, 0]} scale={[w, 0.2, post]} mat={m} />
+          <Part position={[0, seatY, 0.1]} scale={[w - 1, 0.14, d * 0.6]} mat={m} />
+          <Part position={[0, seatY + 0.7, -d * 0.2]} rotation={[-0.15, 0, 0]} scale={[w - 1, 1.3, 0.1]} mat={m} />
+          <Part position={[0, seatY + 0.14, 0.1]} scale={[w - 1.2, 0.18, d * 0.55]} mat={material('#a4452c', 'fabric')} />
+        </>
+      )
+    }
+    case 'console-table':
+      return (
+        <>
+          <Part position={[0, h - 0.06, 0]} scale={[w, 0.12, d]} mat={m} />
+          <Part position={[0, 0.5, 0]} scale={[w - 0.3, 0.08, d - 0.15]} mat={m} />
+          {[[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sz]) => (
+            <Part key={`${sx}${sz}`} position={[sx * (w / 2 - 0.12), (h - 0.12) / 2, sz * (d / 2 - 0.12)]} scale={[0.1, h - 0.12, 0.1]} mat={m} />
+          ))}
+        </>
+      )
+    case 'round-dining-table':
+      return (
+        <>
+          <Part geometry={upright} position={[0, h - 0.06, 0]} scale={[w, 0.12, d]} mat={m} />
+          <Part geometry={upright} position={[0, (h - 0.12) / 2, 0]} scale={[0.45, h - 0.12, 0.45]} mat={m} />
+          <Part geometry={upright} position={[0, 0.06, 0]} scale={[w * 0.45, 0.12, d * 0.45]} mat={m} />
+        </>
+      )
+    case 'crib': {
+      const bars = Math.max(4, Math.round(d / 0.35))
+      return (
+        <>
+          {[[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sz]) => (
+            <Part key={`${sx}${sz}`} position={[sx * (w / 2 - 0.08), h / 2, sz * (d / 2 - 0.08)]} scale={[0.16, h, 0.16]} mat={m} />
+          ))}
+          <Part position={[0, 1.2, 0]} scale={[w - 0.1, 0.15, d - 0.1]} mat={m} />
+          <Part position={[0, 1.45, 0]} scale={[w - 0.2, 0.35, d - 0.2]} mat={material('#f7f5f0', 'fabric')} />
+          {[-1, 1].map((side) => (
+            <group key={side}>
+              <Part position={[side * (w / 2 - 0.08), h - 0.05, 0]} scale={[0.12, 0.1, d]} mat={m} />
+              {Array.from({ length: bars }, (_, i) => (
+                <Part key={i} position={[side * (w / 2 - 0.08), (1.2 + h) / 2, -d / 2 + ((i + 0.5) * d) / bars]} scale={[0.06, h - 1.2, 0.06]} mat={m} />
+              ))}
+            </group>
+          ))}
+          {[-1, 1].map((end) => (
+            <Part key={end} position={[0, (1.2 + h) / 2, end * (d / 2 - 0.08)]} scale={[w, h - 1.2, 0.1]} mat={m} />
+          ))}
+        </>
+      )
+    }
+    case 'pooja-unit': {
+      const cabinet = h * 0.38
+      const gold = material('#c9a35f', STEEL)
+      return (
+        <>
+          <Part position={[0, cabinet / 2, 0]} scale={[w, cabinet, d]} mat={material(WOOD, 'lacquer')} />
+          <Part position={[0, cabinet + 0.04, 0.05]} scale={[w, 0.08, d]} mat={material('#f2eadc')} />
+          {[-1, 1].map((side) => (
+            <Part key={side} position={[side * (w / 2 - 0.12), (cabinet + h * 0.88) / 2, d / 2 - 0.15]} scale={[0.2, h * 0.88 - cabinet, 0.2]} mat={material(WOOD, 'lacquer')} />
+          ))}
+          <Part position={[0, (cabinet + h * 0.88) / 2, -d / 2 + 0.06]} scale={[w - 0.1, h * 0.88 - cabinet, 0.12]} mat={m} />
+          <Part position={[0, h * 0.9, 0]} scale={[w, 0.14, d]} mat={material(WOOD, 'lacquer')} />
+          <Part geometry={cone} position={[0, h * 0.96, 0]} scale={[w * 0.55, h * 0.1, d * 0.55]} mat={gold} />
+          <Part geometry={upright} position={[0, cabinet + 0.14, 0.2]} scale={[0.25, 0.12, 0.25]} mat={gold} />
+          <Part geometry={sphere} position={[0, cabinet + 0.28, 0.2]} scale={[0.08, 0.14, 0.08]} mat={material('#f2b84b', { roughness: 0.3 })} />
+        </>
+      )
+    }
+    case 'upright-piano': {
+      const keyH = h * 0.62
+      return (
+        <>
+          <Part position={[0, h / 2, -0.25]} scale={[w, h, d - 0.5]} mat={m} />
+          <Part position={[0, keyH - 0.1, d / 2 - 0.35]} scale={[w - 0.2, 0.2, 0.7]} mat={m} />
+          <Part position={[0, keyH + 0.03, d / 2 - 0.3]} scale={[w - 0.6, 0.06, 0.5]} mat={material('#f7f5f0', 'lacquer')} />
+          {Array.from({ length: 14 }, (_, i) => (
+            <Part key={i} position={[-(w - 0.8) / 2 + (i + 0.5) * ((w - 0.8) / 14), keyH + 0.08, d / 2 - 0.42]} scale={[0.08, 0.05, 0.26]} mat={material('#1f1d1b')} />
+          ))}
+          {[-1, 1].map((side) => (
+            <Part key={side} position={[side * (w / 2 - 0.15), keyH / 2, d / 2 - 0.3]} scale={[0.18, keyH, 0.18]} mat={m} />
+          ))}
+        </>
+      )
+    }
+    case 'aquarium': {
+      const stand = h * 0.48
+      return (
+        <>
+          <Part position={[0, stand / 2, 0]} scale={[w, stand, d]} mat={material(color, 'lacquer')} />
+          <Part position={[0, stand + (h - stand) / 2, 0]} scale={[w - 0.1, h - stand - 0.1, d - 0.1]} mat={material('#9fd0de', { roughness: 0.1, transparent: true, opacity: 0.45 })} />
+          <Part position={[0, stand + (h - stand) * 0.42, 0]} scale={[w - 0.2, (h - stand) * 0.75, d - 0.2]} mat={material('#3f8fa6', { roughness: 0.2, transparent: true, opacity: 0.35 })} />
+          <Part position={[0, stand + 0.08, 0]} scale={[w - 0.2, 0.12, d - 0.2]} mat={material('#d9c09a')} />
+          <Part position={[0, h - 0.04, 0]} scale={[w, 0.08, d]} mat={material(color, 'lacquer')} />
+        </>
+      )
+    }
+    case 'room-divider': {
+      const panels = 4
+      const pw = w / panels
+      return (
+        <>
+          {Array.from({ length: panels }, (_, i) => (
+            <Part
+              key={i}
+              position={[-w / 2 + pw * (i + 0.5), h / 2 + 0.1, 0]}
+              rotation={[0, i % 2 ? 0.35 : -0.35, 0]}
+              scale={[pw * 0.95, h - 0.2, 0.08]}
+              mat={i % 2 ? m : material(color, { roughness: 0.9 })}
+            />
+          ))}
         </>
       )
     }

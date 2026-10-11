@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import ThemeToggle from '../components/layout/ThemeToggle'
 import {
@@ -31,8 +31,9 @@ import useTips from './hooks/useTips'
 import { FloorFinishPanel, WallFinishPanel } from './panels/FinishPanels'
 import useGestureSetting from './hooks/useGestureSetting'
 import RoomSettings from './panels/RoomSettings'
-import TemplatePanel from './panels/TemplatePanel'
-import AiLayoutPanel from './panels/AiLayoutPanel'
+import Compass from './layout/Compass'
+
+const RoomStarters = lazy(() => import('./panels/RoomStarters'))
 import WallPanel from './panels/WallPanel'
 import WallEditor from './wall/WallEditor'
 import DesignerScene from './scene/DesignerScene'
@@ -87,6 +88,16 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
   const meta = useMemo(() => ({ designId: current.id, name: current.name }), [current])
   const [initialDesign] = useState(() => createDesign({ form, photoName: photo?.name }))
   const { design, dispatch, undo, redo, clearHistory, canUndo, canRedo, saveStatus } = useDesignStore(initialDesign, meta)
+  const setFacing = useCallback((facing) => dispatch({ type: 'setFacing', facing }), [dispatch])
+  const compassRef = useRef(null) // the viewport compass rose; the scene turns it with the camera
+  const turnCompass = useCallback((deg) => {
+    const rose = compassRef.current
+    if (!rose) return
+    const value = `rotate(${deg.toFixed(1)}deg)`
+    if (rose.style.transform === value) return
+    rose.style.transform = value
+    rose.style.setProperty('--counter', `${(-deg).toFixed(1)}deg`) // keeps the letters upright
+  }, [])
   const [draft, setDraft] = useState(() => readDraft()) // the previous session, offered for recovery
   const [dialogOpen, setDialogOpen] = useState(false)
   const [webgl] = useState(hasWebGL)
@@ -324,8 +335,9 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
       icon: Home,
       content: (
         <div className="space-y-5">
-          <TemplatePanel design={design} roomType={form.roomType} onApply={applyTemplate} onDialog={onDialog} />
-          <AiLayoutPanel design={design} roomType={form.roomType} photo={photo} onApply={applyTemplate} onDialog={onDialog} />
+          <Suspense fallback={<p role="status" className="rounded-xl border border-line bg-white p-3 text-xs text-muted">Loading templates and AI arrange…</p>}>
+            <RoomStarters design={design} form={form} photo={photo} onApply={applyTemplate} onDialog={onDialog} onFacing={setFacing} onFocus={closeDrawerOnPick(focusItem)} />
+          </Suspense>
           <ObjectList design={design} selected={selected} onSelect={closeDrawerOnPick((item) => (item.wall ? selectItem(item) : focusItem(item.uid)))} dispatch={dispatch} />
           <RoomSettings design={design} dispatch={dispatch} photoUrl={photo && design.photo?.name === photo.name ? photoUrl : null} />
         </div>
@@ -466,10 +478,12 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
                 onPlace={placeAt}
                 onCancelPlacing={cancelPlacing}
                 onPerf={perfOn ? setPerf : undefined}
+                onCompass={turnCompass}
                 label={`3D view of a ${size.width} by ${size.length} foot room, ${size.height} feet high`}
               />
               </SceneBoundary>
               {tips.show && !contextLost && <OnboardingHint onClose={tips.dismiss} />}
+              {!contextLost && <Compass facing={design.facing} onChange={setFacing} roseRef={compassRef} />}
               <ViewportToolbar
                 mode={mode}
                 setMode={setMode}
@@ -484,12 +498,12 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
                 onShowTips={tips.reopen}
               />
               {perfOn && perf && (
-                <p className="pointer-events-none absolute bottom-3 right-3 rounded-lg bg-ink/80 px-2 py-1 font-mono text-[10px] text-cream" data-testid="perf">
+                <p className="pointer-events-none absolute bottom-3 right-[5.5rem] rounded-lg bg-ink/80 px-2 py-1 font-mono text-[10px] text-cream" data-testid="perf">
                   {perf.fps} fps · {perf.calls} draws · {(perf.triangles / 1000).toFixed(1)}k tris · {perf.geometries} geo · {perf.textures} tex
                 </p>
               )}
               {warnings.length > 0 && (
-                <ul aria-live="polite" className="absolute bottom-3 left-3 right-3 max-h-28 space-y-0.5 overflow-y-auto rounded-xl bg-white/95 px-3 py-2 text-xs shadow-sm sm:right-auto sm:max-w-md">
+                <ul aria-live="polite" className="absolute bottom-3 left-3 right-[5.5rem] max-h-28 space-y-0.5 overflow-y-auto rounded-xl bg-white/95 px-3 py-2 text-xs shadow-sm sm:right-auto sm:max-w-md">
                   {warnings.map((w) => (
                     <li key={`${w.kind}-${w.ids.join('-')}`} className={`anim-from-left flex items-center gap-1.5 ${w.kind === 'overlap' || w.kind === 'too-big' ? 'text-red-700' : 'text-clay'}`}>
                       <TriangleAlert aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /> {w.message}

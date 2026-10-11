@@ -46,6 +46,10 @@ export const WALL_ITEMS = {
     name: 'Spice rack', category: 'kitchen', size: { w: 1.3, h: 0.9, d: 0.3 },
     min: { w: 1.3, h: 0.9 }, max: { w: 1.3, h: 0.9 }, resize: 'none', rotatable: false, defaultY: 4.5, color: '#d9c09a',
   },
+  'wall-tv': {
+    name: 'Wall-mounted TV', category: 'decor', size: { w: 4, h: 2.4, d: 0.25 },
+    min: { w: 2.5, h: 1.5 }, max: { w: 6.5, h: 3.7 }, resize: 'both', lockAspect: true, rotatable: false, defaultY: 4.3, color: '#1d1f1c',
+  },
   door: {
     name: 'Door', category: 'openings', opening: true, floorLocked: true, size: { w: 3, h: 7, d: 0.15 },
     min: { w: 2, h: 6 }, max: { w: 6, h: 8 }, resize: 'both', rotatable: false, defaultY: 3.5, color: '#8b6a45',
@@ -56,7 +60,7 @@ export const WALL_ITEMS = {
   },
 }
 
-export const WALL_DECOR_IDS = ['painting', 'mirror', 'clock', 'shelf', 'sconce', 'panel', 'curtains']
+export const WALL_DECOR_IDS = ['painting', 'mirror', 'clock', 'shelf', 'sconce', 'panel', 'curtains', 'wall-tv']
 export const WALL_KITCHEN_IDS = ['wall-cabinet', 'range-hood', 'spice-rack']
 export const OPENING_IDS = ['door', 'window']
 
@@ -140,6 +144,18 @@ export const FLOOR_ITEMS = {
   'kitchen-island': { name: 'Kitchen island', category: 'kitchen', size: { w: 5, d: 2.7, h: 3 }, scale: null, color: '#8b6a45', surface: true },
   'bar-stool': { name: 'Bar stool', category: 'kitchen', shape: 'round', size: { w: 1.3, d: 1.3, h: 2.5 }, scale: null, color: '#3b3f3a' },
   'kitchen-trolley': { name: 'Kitchen trolley', category: 'kitchen', size: { w: 1.9, d: 1.4, h: 3 }, scale: null, color: '#b9bcbf', surface: true },
+  // More variety: seating, tables, a nursery cot and pieces common in Indian homes.
+  bench: { name: 'Upholstered bench', category: 'sofas-chairs', size: { w: 4, d: 1.4, h: 1.5 }, scale: null, color: '#b9a48a', colors: FABRICS },
+  recliner: { name: 'Recliner chair', category: 'sofas-chairs', size: { w: 3, d: 3.2, h: 3.3 }, scale: null, color: '#6e5a4b', colors: FABRICS },
+  divan: { name: 'Divan (daybed)', category: 'sofas-chairs', size: { w: 6.5, d: 2.8, h: 1.6 }, scale: null, againstWall: true, color: '#a4452c', colors: FABRICS },
+  jhoola: { name: 'Jhoola (swing seat)', category: 'sofas-chairs', size: { w: 4.6, d: 2.4, h: 6.6 }, scale: null, color: '#7a4e2d' },
+  'console-table': { name: 'Console table', category: 'tables', size: { w: 3.8, d: 1.2, h: 2.6 }, scale: null, againstWall: true, color: '#8b6a45', surface: true },
+  'round-dining-table': { name: 'Round dining table', category: 'tables', shape: 'round', size: { w: 4, d: 4, h: 2.5 }, scale: null, color: '#8b6a45', surface: true },
+  crib: { name: 'Baby cot', category: 'beds', size: { w: 2.5, d: 4.4, h: 3.2 }, scale: null, againstWall: true, color: '#e9e4dc' },
+  'pooja-unit': { name: 'Pooja unit', category: 'storage', size: { w: 2.5, d: 1.6, h: 5.5 }, scale: null, againstWall: true, color: '#c9a35f' },
+  'upright-piano': { name: 'Upright piano', category: 'decor', size: { w: 4.8, d: 1.9, h: 4.2 }, scale: null, againstWall: true, color: '#1f1d1b' },
+  aquarium: { name: 'Aquarium on stand', category: 'decor', size: { w: 3, d: 1.3, h: 4.3 }, scale: null, againstWall: true, color: '#3b2f2a' },
+  'room-divider': { name: 'Folding screen', category: 'decor', size: { w: 5, d: 0.8, h: 5.6 }, scale: null, color: '#cbb27a' },
 }
 
 export const FLOOR_CATEGORIES = [

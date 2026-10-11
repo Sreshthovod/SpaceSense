@@ -243,6 +243,41 @@ Modes (`H` Navigate, `V` Select, `M` Move, `E` Rotate): Navigate never selects; 
 
 The Room tab has an **Arrange with AI** panel. It asks a Gemini *text* model where to put the designer's existing pieces, so it works on the free tier. (Gemini's image models are not free, and no Gemini model produces 3D scenes.) The server sends the model a compact copy of the catalog and the room, constrains its answer to those piece ids, and the designer then re-checks every piece (inside the room, no overlaps, door not blocked, table-top pieces on a table) before placing it as one undoable change. Before placing, the designer tidies the layout with fixed rules (right angles, chairs facing their table, one rug fitted under the main group, walkways between big pieces, and a door and window if the model left them out). Collisions and outlines follow each piece's real shape: the L-shaped sofa is an L (a table fits in its corner) and round pieces are round. Products and prices are never chosen. Your photo is sent only if you tick the box; on the free tier Google may use content to improve its products. Settings: `GEMINI_API_KEY`, optional `SPACESENSE_GEMINI_LAYOUT_MODEL` and `SPACESENSE_LAYOUT_RATE_PER_MIN`. Endpoint: `POST /studio/ai-layout`.
 
+### How AI arrange and the layout score work
+
+1. **Ask.** The designer sends Gemini the room's size and type, its style, the catalog (sizes and which pieces go against walls), and a starter example. In Vastu mode it also sends the room's direction. The server's prompt adds:
+   - the coordinate system and the hard rules;
+   - design principles and a recipe for the room type;
+   - in Vastu mode, the Vastu guidelines translated into this room's walls and corners, with x/z coordinates for each compass zone.
+
+   Gemini returns **3 different layouts** in one request.
+2. **Check.** Each layout is built using the designer's own placement rules: tidy angles, chairs turned to face their table, the rug fitted under its group. A piece is dropped or nudged if it would:
+   - leave the room;
+   - overlap something;
+   - block a door;
+   - sit under a wall cabinet.
+3. **Score** (`model/layoutScore.js`). Each layout gets 0–100, the weighted average of these terms:
+
+   | Term | Weight |
+   |---|---|
+   | Against the walls | 14 |
+   | Seats face the right way | 14 |
+   | Comfortable distances (coffee table 1–2 ft in front of the sofa and centred on it; TV 6–12 ft away; bedside tables at the bed's head; chairs pulled up to their table) | 14 |
+   | Room to walk (a path of about 1.5 ft or wider from the door to every seat, bed and cupboard front, found on a ½ ft grid) | 18 |
+   | Open middle | 8 |
+   | Windows kept clear | 6 |
+   | Balanced room | 8 |
+   | No awkward gaps | 8 |
+   | Vastu, in Vastu mode only (what fraction of the pieces follow each guideline) | 34 |
+
+4. **Optimise** (`model/layoutOptimize.js`). The two best layouts are fine-tuned by local search (hill climbing). For each piece, biggest first, the optimiser:
+   - tries nudges, quarter turns, every slot along every wall, and "where it belongs" spots (the table in front of the sofa, chairs around the table, bedside tables at the bed's head, lamps beside seats, plants in corners), plus swaps with similar-sized pieces;
+   - keeps the move that raises the score most, and repeats until nothing improves.
+
+   Every move must still pass the placement rules, so the result is always valid. Lamps on tables move with their table, and locked pieces never move. The highest-scoring result is applied as a single undo step.
+
+The **Layout score** panel in the Room tab shows the breakdown for any design. **Improve layout** runs the same optimiser on whatever is in the room, including templates and hand-placed layouts.
+
 ## API
 
 Room details are the same everywhere (feet and INR):

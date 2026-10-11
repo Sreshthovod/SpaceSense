@@ -97,7 +97,7 @@ describe('catalog', () => {
     expect(screen.getByText(/No furniture matches “spaceship”/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /Clear filters/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Beds' }))
-    expect(list()).toEqual(['Add queen bed', 'Add bunk bed', 'Add single bed'])
+    expect(list()).toEqual(['Add queen bed', 'Add bunk bed', 'Add single bed', 'Add baby cot'])
   })
 
   it('a mouse click starts a placement preview; clicking the floor places it; Esc cancels', () => {

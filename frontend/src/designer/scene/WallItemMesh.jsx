@@ -100,6 +100,13 @@ function Parts({ catalogId, w, h, d, color }) {
           ))}
         </>
       )
+    case 'wall-tv':
+      return (
+        <>
+          <Part position={[0, 0, d / 2]} scale={[w, h, d]} mat={material(color, { roughness: 0.4, metalness: 0.2 })} />
+          <Part position={[0, 0.04, d + 0.005]} scale={[w - 0.16, h - 0.24, 0.01]} mat={material('#2b3a42', { roughness: 0.15, metalness: 0.1 })} />
+        </>
+      )
     case 'door':
       return (
         <>

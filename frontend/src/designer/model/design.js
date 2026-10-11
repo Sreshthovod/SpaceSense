@@ -4,6 +4,7 @@
  * Units: feet for every length (the form asks for feet), INR for money. Scene coordinates put the
  * floor centre at the origin: x runs across the room's width, z along its length, y up.
  */
+import { DIRECTIONS } from '../../data/sampleData'
 import { LIMITS } from '../../utils/validation'
 
 export const SCHEMA_VERSION = 2
@@ -76,6 +77,9 @@ export function createDesign({ form = {}, photoName = null } = {}) {
     style: form.style || DEMO.style,
     choices: { removed: [], replaced: {} },
     photo: photoName ? { name: photoName } : null,
+    // The compass side of the back wall. From the brief: the direction you face walking in is taken as the
+    // far (back) wall, the way the designer first shows the room. null until known.
+    facing: DIRECTIONS.includes(form.entryDirection) ? form.entryDirection : null,
   }
 }
 

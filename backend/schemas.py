@@ -486,11 +486,25 @@ class LayoutOptions(BaseModel):
     floor: list[LayoutFloorSpec] = Field(min_length=1, max_length=80)
     wall: list[LayoutWallSpec] = Field(default_factory=list, max_length=40)
     example: LayoutExample | None = None
+    # Which side of the compass the designer's back wall is on (Vastu mode). None: orientation unknown.
+    compass_back: str | None = Field(default=None, examples=["north"])
+    # How many different layouts to ask for in one go (the designer scores them and keeps the best).
+    variants: int = Field(default=1, ge=1, le=3)
 
     @field_validator("notes")
     @classmethod
     def _notes(cls, v: str) -> str:
         return " ".join(v.split())  # one line: notes are quoted into the prompt
+
+    @field_validator("compass_back")
+    @classmethod
+    def _compass_back(cls, v: str | None) -> str | None:
+        if v is None or not v.strip():
+            return None
+        v = v.strip().lower()
+        if v not in DIRECTIONS:
+            raise ValueError(f"must be one of: {', '.join(DIRECTIONS)}")
+        return v
 
     @model_validator(mode="after")
     def _unique_ids(self) -> "LayoutOptions":
@@ -499,6 +513,17 @@ class LayoutOptions(BaseModel):
             if len(ids) != len(set(ids)):
                 raise ValueError(f"{label} piece ids must be unique")
         return self
+
+
+class LayoutAlternative(BaseModel):
+    """Another arrangement of the same room, asked for alongside the main one."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    summary: str = Field(default="", max_length=600)
+    accent_wall: LayoutWall | None = None
+    floor: list[LayoutFloorPiece] = Field(default_factory=list, max_length=80)
+    wall: list[LayoutWallPiece] = Field(default_factory=list, max_length=40)
 
 
 class StudioLayout(BaseModel):
@@ -510,3 +535,4 @@ class StudioLayout(BaseModel):
     accent_wall: LayoutWall | None = None
     floor: list[LayoutFloorPiece] = Field(default_factory=list, max_length=80)
     wall: list[LayoutWallPiece] = Field(default_factory=list, max_length=40)
+    alternatives: list[LayoutAlternative] = Field(default_factory=list, max_length=2)

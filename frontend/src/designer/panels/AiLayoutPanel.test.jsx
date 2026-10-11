@@ -5,6 +5,7 @@ import AiLayoutPanel from './AiLayoutPanel'
 import { aiLayout, getImageProviders } from '../../services/api'
 import { createDesign } from '../model/design'
 import { designReducer } from '../model/reducer'
+import { floorWarnings } from '../model/floorPlacement'
 
 vi.mock('../../services/api', () => ({ aiLayout: vi.fn(), getImageProviders: vi.fn() }))
 
@@ -46,16 +47,17 @@ describe('AiLayoutPanel', () => {
     expect(args.photo).toBeNull()
     const next = onApply.mock.calls[0][0]
     expect(next.items.map((i) => i.catalogId).sort()).toEqual(['coffee-table', 'sofa'])
-    expect(await screen.findByText(/Sofa on the back wall\. 2 pieces placed\. Added a door and a window\. Undo brings your last design back/)).toBeTruthy()
+    expect(args.options.variants).toBe(3)
+    expect(await screen.findByText(/Sofa on the back wall\. 2 pieces placed\. Added a door and a window\. Layout score \d+ → \d+\/100 after fine-tuning.*Undo brings your last design back/)).toBeTruthy()
     expect(next.openings.map((o) => o.catalogId).sort()).toEqual(['door', 'window'])
   })
 
   it('only offers to send the photo when there is one, and never sends it unless ticked', async () => {
     const { unmount } = render(<AiLayoutPanel design={empty()} roomType="Bedroom" photo={null} onApply={() => {}} onDialog={() => {}} />)
-    expect(screen.queryByRole('checkbox')).toBeNull()
+    expect(screen.queryByRole('checkbox', { name: /send my photo/i })).toBeNull()
     unmount()
     const onApply = renderPanel({ photo })
-    const box = screen.getByRole('checkbox')
+    const box = screen.getByRole('checkbox', { name: /send my photo/i })
     expect(box.checked).toBe(false)
     expect(screen.getByText(/Google may use it to improve its products/)).toBeTruthy()
     arrange()
@@ -141,5 +143,53 @@ describe('AiLayoutPanel', () => {
     resolve(PROPOSAL)
     await waitFor(() => expect(onApply).toHaveBeenCalledTimes(1))
     expect(aiLayout).toHaveBeenCalledTimes(1)
+  })
+
+  it('Vastu mode sends the room direction and reports how the result follows the guidelines', async () => {
+    const onApply = renderPanel({ design: { ...empty(), facing: 'north' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: /vastu mode/i }))
+    arrange()
+    await waitFor(() => expect(onApply).toHaveBeenCalledTimes(1))
+    const [args] = vi.mocked(aiLayout).mock.calls[0]
+    expect(args.room.vastu).toBe(true)
+    expect(args.options.compass_back).toBe('north')
+    expect(onApply.mock.calls[0][0].facing).toBe('north') // the layout keeps the room's direction
+    expect(await screen.findByText(/Vastu check: \d of \d guidelines followed/)).toBeTruthy()
+  })
+
+  it('Vastu mode asks for the room direction first, and starts on when the brief asked for Vastu', () => {
+    const onFacing = vi.fn()
+    renderPanel({ vastuDefault: true, onFacing })
+    expect(screen.getByRole('checkbox', { name: /vastu mode/i }).checked).toBe(true)
+    expect(screen.getByText(/needs the room's direction/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /arrange with ai/i }).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('radio', { name: 'Back wall faces east' }))
+    expect(onFacing).toHaveBeenCalledWith('east')
+  })
+
+  it('without Vastu mode no direction is sent', async () => {
+    const onApply = renderPanel({ design: { ...empty(), facing: 'north' } })
+    arrange()
+    await waitFor(() => expect(onApply).toHaveBeenCalledTimes(1))
+    const [args] = vi.mocked(aiLayout).mock.calls[0]
+    expect(args.room.vastu).toBe(false)
+    expect(args.options).not.toHaveProperty('compass_back')
+  })
+
+  it('scores every layout the AI sends and applies the best one', async () => {
+    // The main proposal crams the sofa into the middle; the alternative puts it against the wall with the table in front.
+    vi.mocked(aiLayout).mockResolvedValue({
+      summary: 'Sofa in the middle.',
+      floor: [{ type: 'sofa', x: 0, z: 0, rotation: 90 }, { type: 'coffee-table', x: 4, z: 5, rotation: 0 }],
+      wall: [],
+      alternatives: [{ summary: 'Sofa on the back wall.', floor: PROPOSAL.floor, wall: [] }],
+    })
+    const onApply = renderPanel()
+    arrange()
+    await waitFor(() => expect(onApply).toHaveBeenCalledTimes(1))
+    expect(await screen.findByText(/Best of 2 AI layouts/)).toBeTruthy()
+    const next = onApply.mock.calls[0][0]
+    expect(next.items.map((i) => i.catalogId).sort()).toEqual(['coffee-table', 'sofa'])
+    expect(floorWarnings(next)).toEqual([])
   })
 })

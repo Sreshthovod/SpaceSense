@@ -107,7 +107,7 @@ describe('catalog search', () => {
     expect(searchCatalog({ query: 'SOFA' })).toContain('sofa')
     expect(searchCatalog({ query: 'kivik', catalog })).toEqual(['sofa'])
     expect(searchCatalog({ query: 'lamps' })).toEqual(['floor-lamp', 'table-lamp', 'work-lamp'])
-    expect(searchCatalog({ category: 'beds' })).toEqual(['bed', 'bunk-bed', 'single-bed'])
+    expect(searchCatalog({ category: 'beds' })).toEqual(['bed', 'bunk-bed', 'single-bed', 'crib'])
     expect(searchCatalog({ query: 'zzz' })).toEqual([])
   })
 

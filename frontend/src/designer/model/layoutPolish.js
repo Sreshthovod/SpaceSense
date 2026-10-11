@@ -14,16 +14,17 @@ const RUG_MARGIN = 1.5 // ft the rug should reach beyond the furniture on it
 const BEDS = ['bed', 'single-bed', 'bunk-bed']
 // What each kind of seat should face, nearest first, and how far away that may be (ft).
 const FACES = {
-  'dining-chair': { targets: ['dining-table'], within: 5 },
+  'dining-chair': { targets: ['dining-table', 'round-dining-table'], within: 5 },
   'desk-chair': { targets: ['study-desk', 'dressing-table'], within: 5 },
   'bar-stool': { targets: ['kitchen-island'], within: 5 },
   armchair: { targets: ['coffee-table', 'sofa', 'l-sofa'], within: 9 },
   'bean-bag': { targets: ['coffee-table', 'tv-unit'], within: 9 },
+  recliner: { targets: ['coffee-table', 'tv-unit'], within: 10 },
 }
 // Seating and tables that make up a "group" a rug goes under.
-const GROUP = ['sofa', 'l-sofa', 'armchair', 'dining-chair', 'coffee-table', 'dining-table', 'desk-chair', 'study-desk', 'bean-bag']
+const GROUP = ['sofa', 'l-sofa', 'armchair', 'recliner', 'dining-chair', 'coffee-table', 'dining-table', 'round-dining-table', 'desk-chair', 'study-desk', 'bean-bag']
 // Where a rug goes, best anchor first.
-const ANCHORS = [BEDS, ['dining-table'], ['coffee-table'], ['study-desk']]
+const ANCHORS = [BEDS, ['dining-table', 'round-dining-table'], ['coffee-table'], ['study-desk']]
 
 const turn90 = (deg) => ((Math.round(deg / 90) * 90) % 360 + 360) % 360
 const faceAngle = (from, to) => turn90((Math.atan2(to.x - from.x, to.z - from.z) * 180) / Math.PI)

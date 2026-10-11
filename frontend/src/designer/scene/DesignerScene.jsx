@@ -6,6 +6,7 @@ import FloorItems from './FloorItems'
 import PerfProbe from './PerfProbe'
 import Shadows from './Shadows'
 import PlacementGhost from './PlacementGhost'
+import CompassTracker from './CompassTracker'
 import PlanOverlay from './PlanOverlay'
 import Room from './Room'
 import { ResourcesProvider } from './resources'
@@ -24,7 +25,7 @@ const LIGHT = { exposure: 1.35, hemisphere: 1.5, ambient: 0.6, fill: 0.25, sun: 
 
 export default function DesignerScene({
   design, size, view = '3d', mode = 'select', snap = true, command, wheelSetting, reduced, label, activeWall, selected, warned,
-  onSelectWall, onSelectItem, onDeselect, onFocusItem, dispatch, placing, onPlace, onCancelPlacing, onPerf, onContextLost,
+  onSelectWall, onSelectItem, onDeselect, onFocusItem, dispatch, placing, onPlace, onCancelPlacing, onPerf, onContextLost, onCompass,
 }) {
   // In Navigate mode (and while placing a new piece) clicks never select anything.
   const navigate = mode === 'navigate' || Boolean(placing)
@@ -103,6 +104,7 @@ export default function DesignerScene({
       </ResourcesProvider>
       <Shadows design={design} tick={dragTick} />
       {onPerf && <PerfProbe onStats={onPerf} />}
+      <CompassTracker facing={design.facing} onTurn={onCompass} />
       <CameraRig room={size} view={view} command={command} reduced={reduced} wheelSetting={wheelSetting} controlsRef={controls} />
     </Canvas>
   )

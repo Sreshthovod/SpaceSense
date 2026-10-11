@@ -10,7 +10,7 @@ from pydantic import ValidationError
 
 from schemas import ChatRequest, DesignRecommendations, EditInstructions, LayoutOptions, RoomRequest, StudioLayout
 from services.images import RoomImage
-from services.vastu import describe_for_prompt as vastu_prompt
+from services.vastu import describe_for_prompt as vastu_prompt, designer_prompt as vastu_layout_prompt
 
 logger = logging.getLogger("spacesense.gemini")
 
@@ -222,16 +222,21 @@ def layout_schema(options: LayoutOptions) -> dict:
         },
         "required": ["type", "wall", "along"],
     }
-    return {
-        "type": "object",
-        "properties": {
-            "summary": {"type": "string"},
-            "accent_wall": {"type": "string", "enum": WALL_NAMES},
-            "floor": {"type": "array", "items": floor_item},
-            "wall": {"type": "array", "items": wall_item},
-        },
-        "required": ["summary", "floor", "wall"],
+    layout = {
+        "summary": {"type": "string"},
+        "accent_wall": {"type": "string", "enum": WALL_NAMES},
+        "floor": {"type": "array", "items": floor_item},
+        "wall": {"type": "array", "items": wall_item},
     }
+    schema = {"type": "object", "properties": dict(layout), "required": ["summary", "floor", "wall"]}
+    if options.variants > 1:
+        # Extra, genuinely different arrangements; the designer scores every one and keeps the best.
+        schema["properties"]["alternatives"] = {
+            "type": "array",
+            "items": {"type": "object", "properties": layout, "required": ["summary", "floor", "wall"]},
+            "maxItems": options.variants - 1,
+        }
+    return schema
 
 
 def _piece_lines(options: LayoutOptions) -> str:
@@ -251,6 +256,27 @@ def _piece_lines(options: LayoutOptions) -> str:
         for w in options.wall
     ]
     return "FLOOR PIECES (type ids):\n" + "\n".join(floor) + "\n\nWALL PIECES (type ids):\n" + ("\n".join(wall) or "- none")
+
+
+# How a designer would usually lay out each kind of room. Guidance, not rules: the numbered rules win.
+ROOM_RECIPES = {
+    "living room": "Put the sofa against the longest free wall, facing the TV unit on the opposite wall about 6 to 12 ft away. "
+                   "Centre the coffee table in front of the sofa with about 1.5 ft between them. Armchairs go at the ends of the "
+                   "coffee table, turned towards it. The rug sits under the front of the seating group. A floor lamp beside a sofa "
+                   "end and a plant in a corner finish it.",
+    "bedroom": "Centre the bed's headboard on a solid wall (not under a window and, if possible, not on the door wall), with at "
+               "least 2 ft to walk on both sides and at the foot. Bedside tables touch both sides of the bed at its head. The "
+               "wardrobe goes on a wall with 3 ft clear in front of it; a dresser or desk opposite or beside the bed.",
+    "kitchen": "Base cabinets, the sink and the stove form one continuous counter run along the walls, with the sink, stove and "
+               "fridge 4 to 9 ft apart (a working triangle). Wall cabinets go above the run and the chimney hood above the stove. "
+               "Only add an island if 3.5 ft stays free on every side of it.",
+    "dining room": "Centre the dining table, with at least 3 ft from its edge to the walls or furniture on the chair sides. Space "
+                   "the chairs evenly along the long sides, facing the table. A sideboard goes against a wall.",
+    "home office": "Put the desk against a wall, ideally side-on to the window so daylight falls from the side, with the chair in "
+                   "front and 3 ft free behind it. Bookshelf and filing cabinet go on a wall within reach of the desk.",
+    "kids room": "Put the bed against a wall in a corner to free the floor for play. The desk goes near the window; storage stays "
+                 "low and along the walls; keep an open play area in the middle, with the rug there.",
+}
 
 
 def build_layout_prompt(req: RoomRequest, options: LayoutOptions, has_photo: bool) -> str:
@@ -303,7 +329,16 @@ def build_layout_prompt(req: RoomRequest, options: LayoutOptions, has_photo: boo
         "- Use one rug, under the seating group, the dining table or the foot of the bed.\n"
         "- Chairs go along the long sides of a table, facing it. Bedside tables go on both sides of a bed.\n"
         "- Lamps and plants go beside seating, in corners, or on tables, never alone in the middle.\n"
-        "- Spread the furniture around the room instead of crowding one side, and hang art above the sofa or bed."
+        "- Spread the furniture around the room instead of crowding one side, and hang art above the sofa or bed.\n"
+        "- Avoid leaving slivers of a few inches to a foot between pieces or between a piece and a wall: either touch or leave a real gap.\n"
+        "- Keep tall pieces (wardrobe, bookshelf) away from windows and out of the middle of the room."
+        + (f"\n\nFOR A {req.room_type.upper()}: {ROOM_RECIPES[req.room_type]}" if req.room_type in ROOM_RECIPES else "")
+        + (f"\n\n{vastu_layout_prompt(req.room_type, options.compass_back, w, ln)}" if req.vastu else "")
+        + (
+            f"\n\nALTERNATIVES: also return {options.variants - 1} more layout{'s' if options.variants > 2 else ''} in `alternatives`, "
+            "each a genuinely different arrangement (a different focus wall or seating plan), following the same rules."
+            if options.variants > 1 else ""
+        )
         + example
     )
 
@@ -313,7 +348,8 @@ def layout_with_gemini(client, model: str, req: RoomRequest, image: RoomImage | 
     prompt = build_layout_prompt(req, options, image is not None)
     contents = [types.Part.from_bytes(data=image.data, mime_type=image.mime_type), prompt] if image else [prompt]
     config = types.GenerateContentConfig(
-        response_mime_type="application/json", response_json_schema=layout_schema(options), temperature=0.5,
+        response_mime_type="application/json", response_json_schema=layout_schema(options),
+        temperature=0.7 if options.variants > 1 else 0.5,  # a little more variety when asking for alternatives
     )
     floor_ids, wall_ids = {f.id for f in options.floor}, {w.id for w in options.wall}
     last: Exception | None = None
@@ -324,12 +360,17 @@ def layout_with_gemini(client, model: str, req: RoomRequest, image: RoomImage | 
             if not isinstance(data, dict):
                 raise ValueError("not a JSON object")
             data["summary"] = str(data.get("summary") or "")[:600]
+            alternatives = data.get("alternatives") if isinstance(data.get("alternatives"), list) else []
+            data["alternatives"] = [
+                {**a, "summary": str(a.get("summary") or "")[:600]} for a in alternatives[: options.variants - 1] if isinstance(a, dict)
+            ]
             layout = StudioLayout.model_validate({**data, "provider": "gemini"})
         except (ValueError, ValidationError) as exc:
             last = exc
             continue
         # The schema enums should already guarantee this; checked again because the model is not trusted.
-        layout.floor = [p for p in layout.floor if p.type in floor_ids]
-        layout.wall = [p for p in layout.wall if p.type in wall_ids]
+        for part in (layout, *layout.alternatives):
+            part.floor = [p for p in part.floor if p.type in floor_ids]
+            part.wall = [p for p in part.wall if p.type in wall_ids]
         return layout
     raise GeminiCallError(f"Unusable layout response: {last}", "bad_output")

@@ -226,7 +226,7 @@ function applyFinishes(design, preset, accent) {
 
 /** A fresh, empty design that keeps the room's size, budget, style and photo. */
 export function emptyRoom(current) {
-  return { ...createDesign({}), room: current.room, budget: current.budget, style: current.style, photo: current.photo }
+  return { ...createDesign({}), room: current.room, budget: current.budget, style: current.style, photo: current.photo, facing: current.facing ?? null }
 }
 
 /**
