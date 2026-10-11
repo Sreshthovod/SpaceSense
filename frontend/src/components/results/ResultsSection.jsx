@@ -1,7 +1,8 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, Box, Info } from 'lucide-react'
 import { STYLES } from '../../data/sampleData'
 import { recommendProducts } from '../../services/api'
+import { fileFromDataUrl } from '../../utils/dataUrlFile'
 import { samplePalette } from '../../utils/palette'
 import { moodClass } from '../../utils/styles'
 import Button from '../ui/Button'
@@ -39,6 +40,14 @@ export default function ResultsSection({
   const [compareStyle, setCompareStyle] = useState(restored?.compareStyle || '')
   const [designerOpen, setDesignerOpen] = useState(false)
   const designerButtonRef = useRef(null)
+  // The edited photo, if the user generated one; the 3D designer prefers it over the original.
+  const [editedUrl, setEditedUrl] = useState(null)
+  const editedFile = useMemo(
+    () => (editedUrl ? fileFromDataUrl(editedUrl, `edited-${(photo?.name || 'room').replace(/\.[^.]+$/, '')}`) : null),
+    [editedUrl, photo],
+  )
+  const designerPhoto = editedFile || photo
+  const designerPhotoUrl = editedFile ? editedUrl : imageUrl
   const [palette, setPalette] = useState(STYLES.find((s) => s.id === form.style)?.swatch || [])
 
   useEffect(() => {
@@ -94,7 +103,7 @@ export default function ResultsSection({
       <div id="advice" className="mt-6 scroll-mt-32"><RecommendationsPanel analysis={analysis} /></div>
       <div id="chat" className="mt-6 scroll-mt-32"><ChatPanel form={form} photo={photo} recommendations={analysis.recommendations} /></div>
       <div id="photo" className="mt-6 scroll-mt-32">
-        <DesignStudio form={form} photo={photo} originalUrl={imageUrl} recommendations={analysis.recommendations} />
+        <DesignStudio form={form} photo={photo} originalUrl={imageUrl} recommendations={analysis.recommendations} onEdited={setEditedUrl} />
       </div>
       <div id="shop" className="reveal mt-6 scroll-mt-32">
         <FurniturePanel products={products} error={productsError} onRetry={retryProducts} retrying={retrying} />
@@ -118,7 +127,7 @@ export default function ResultsSection({
       </Card>
       {designerOpen && (
         <Suspense fallback={<p role="status" className="fixed inset-0 z-[60] flex items-center justify-center bg-cream text-sm text-muted">Loading the 3D designer…</p>}>
-          <RoomDesigner form={form} photo={photo} photoUrl={imageUrl} onClose={closeDesigner} />
+          <RoomDesigner form={form} photo={designerPhoto} photoUrl={designerPhotoUrl} photoEdited={!!editedFile} onClose={closeDesigner} />
         </Suspense>
       )}
 

@@ -17,7 +17,7 @@ export const APPROVAL_QUESTION = 'Would you like me to apply these changes to yo
  * Consult-first flow: shows the original photo and asks for explicit approval.
  * The photo is only sent for editing from the "Yes, edit my photo" action.
  */
-export default function DesignStudio({ form, photo, originalUrl, recommendations }) {
+export default function DesignStudio({ form, photo, originalUrl, recommendations, onEdited }) {
   const items = useMemo(() => toApprovableItems(recommendations), [recommendations])
   const [phase, setPhase] = useState('ask') // ask | customize | later | editing | done | error
   const [selected, setSelected] = useState(() => new Set(items.map((i) => i.id)))
@@ -44,6 +44,8 @@ export default function DesignStudio({ form, photo, originalUrl, recommendations
   const approvedItems = items.filter((i) => selected.has(i.id))
   // Only a real edit carries an image; the original upload is never replaced.
   const editedUrl = result?.status === 'edited' ? result.image_url : null
+  // Let the results page know, so the 3D designer can use the edited photo instead of the original.
+  useEffect(() => { onEdited?.(editedUrl) }, [editedUrl, onEdited])
 
   const applyEdits = async () => {
     if (inFlight.current || approvedItems.length === 0) return

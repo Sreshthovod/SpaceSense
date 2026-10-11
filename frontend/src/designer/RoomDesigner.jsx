@@ -82,7 +82,7 @@ function RecoveryBanner({ draft, onRecover, onFresh, onDismiss }) {
  * Full-screen 3D designer. Opened from the results page (with the room's brief and photo) or from
  * the landing page (demo room). Loaded lazily so the rest of the app stays fast.
  */
-export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, closeLabel = 'Back to results' }) {
+export default function RoomDesigner({ form = {}, photo, photoUrl, photoEdited = false, onClose, closeLabel = 'Back to results' }) {
   const reduced = usePrefersReducedMotion()
   const [current, setCurrent] = useState({ id: null, name: null }) // the named design being edited, if any
   const meta = useMemo(() => ({ designId: current.id, name: current.name }), [current])
@@ -339,7 +339,7 @@ export default function RoomDesigner({ form = {}, photo, photoUrl, onClose, clos
             <RoomStarters design={design} form={form} photo={photo} onApply={applyTemplate} onDialog={onDialog} onFacing={setFacing} onFocus={closeDrawerOnPick(focusItem)} />
           </Suspense>
           <ObjectList design={design} selected={selected} onSelect={closeDrawerOnPick((item) => (item.wall ? selectItem(item) : focusItem(item.uid)))} dispatch={dispatch} />
-          <RoomSettings design={design} dispatch={dispatch} photoUrl={photo && design.photo?.name === photo.name ? photoUrl : null} />
+          <RoomSettings design={design} dispatch={dispatch} photoEdited={photoEdited} photoUrl={photo && design.photo?.name === photo.name ? photoUrl : null} />
         </div>
       ),
     },

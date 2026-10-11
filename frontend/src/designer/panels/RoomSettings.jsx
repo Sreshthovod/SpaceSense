@@ -62,7 +62,7 @@ function DimensionField({ id, dim, onValue, onSource }) {
   )
 }
 
-export default function RoomSettings({ design, dispatch, photoUrl }) {
+export default function RoomSettings({ design, dispatch, photoUrl, photoEdited = false }) {
   const { room } = design
   const area = room.width.value * room.length.value
 
@@ -95,8 +95,8 @@ export default function RoomSettings({ design, dispatch, photoUrl }) {
       )}
       {photoUrl && (
         <section aria-labelledby="photo-ref-heading" className="border-t border-line pt-5">
-          <h3 id="photo-ref-heading" className="font-display text-xl font-semibold">Your photo</h3>
-          <img src={photoUrl} alt="Your room photo, for reference" className="mt-3 aspect-[4/3] w-full rounded-xl border border-line object-cover" />
+          <h3 id="photo-ref-heading" className="font-display text-xl font-semibold">{photoEdited ? 'Your edited photo' : 'Your photo'}</h3>
+          <img src={photoUrl} alt={photoEdited ? 'Your AI-edited room photo, for reference' : 'Your room photo, for reference'} className="mt-3 aspect-[4/3] w-full rounded-xl border border-line object-cover" />
           <p className="mt-2 text-xs text-muted">For reference only. The 3D room is built from the dimensions above, not reconstructed from the photo.</p>
         </section>
       )}
