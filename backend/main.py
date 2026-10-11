@@ -52,7 +52,8 @@ M = TypeVar("M", bound=BaseModel)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     # Fail fast on a malformed catalog, an unknown provider name or missing provider credentials.
-    auth_service.init_db()
+    # The accounts database is not opened here: services.auth creates it lazily on the first /auth
+    # request, so the design APIs start even where the filesystem is read-only (e.g. Vercel).
     load_catalog(CATALOG_PATH)
     load_mapping(STUDIO_CATALOG_PATH)
     get_product_sources()
