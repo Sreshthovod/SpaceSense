@@ -3,7 +3,6 @@ import { flushSync } from 'react-dom'
 import Navbar from './components/layout/Navbar'
 import Footer from './components/layout/Footer'
 import Hero from './components/landing/Hero'
-import BeforeAfter from './components/landing/BeforeAfter'
 import HowItWorks from './components/landing/HowItWorks'
 import DesignStyles from './components/landing/DesignStyles'
 import VastuSection from './components/landing/VastuSection'
@@ -213,7 +212,6 @@ export default function App() {
         ) : (
           <>
             <Hero onStart={leaveResults} onOpenDesigner={openDesigner} />
-            <BeforeAfter />
             <HowItWorks />
             <VastuSection onStartVastu={startVastu} onOpenDesigner={openDesigner} />
             <DesignStyles onSelectStyle={selectStyle} selected={form.style} />

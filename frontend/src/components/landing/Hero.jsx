@@ -75,8 +75,8 @@ export default function Hero({ onStart, onOpenDesigner }) {
         </div>
       </div>
       <a
-        href="#transformation"
-        aria-label="Scroll to see a transformation"
+        href="#how-it-works"
+        aria-label="Scroll to how it works"
         className="absolute bottom-5 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-1 text-[0.65rem] uppercase tracking-[0.2em] text-ink/60 transition-colors hover:text-ink sm:flex"
       >
         Scroll
