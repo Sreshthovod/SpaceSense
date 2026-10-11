@@ -224,6 +224,27 @@ body {
 .how-lift { transition: transform var(--dur-slow) var(--ease-out), border-color var(--dur-slow) var(--ease-out), box-shadow var(--dur-slow) var(--ease-out); }
 .how-num { transition: color var(--dur) var(--ease-out); }
 .how-zoom { transition: transform 0.7s var(--ease-out); }
+/* Room form. */
+.field { transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out); }
+.field:focus { border-color: var(--color-sage-dark); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-sage) 25%, transparent); }
+.field[aria-invalid='true']:focus { border-color: var(--color-red-400, #f87171); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-clay) 22%, transparent); }
+.step-fill { transition: transform 0.5s var(--ease-out); }
+.drop-zone { transition: background-color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out); }
+.drop-zone.is-dragging { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-sage) 22%, transparent); }
+.drop-corners { transition: color var(--dur) var(--ease-out);
+  background:
+    linear-gradient(currentColor, currentColor) left top / 16px 1.5px, linear-gradient(currentColor, currentColor) left top / 1.5px 16px,
+    linear-gradient(currentColor, currentColor) right top / 16px 1.5px, linear-gradient(currentColor, currentColor) right top / 1.5px 16px,
+    linear-gradient(currentColor, currentColor) left bottom / 16px 1.5px, linear-gradient(currentColor, currentColor) left bottom / 1.5px 16px,
+    linear-gradient(currentColor, currentColor) right bottom / 16px 1.5px, linear-gradient(currentColor, currentColor) right bottom / 1.5px 16px;
+  background-repeat: no-repeat; }
+@keyframes photo-reveal { from { opacity: 0; transform: scale(0.985); } to { opacity: 1; transform: none; } }
+.photo-reveal { animation: photo-reveal 0.45s var(--ease-out) backwards; }
+@keyframes brief-value { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+.brief-value { animation: brief-value 0.25s var(--ease-out) backwards; }
+/* The plan glides between sizes; the transform carries the geometry (see FloorPlan). */
+.plan-shape { transition: transform 0.45s var(--ease-out); }
+
 /* Image Lab. The empty canvas sketch draws in when the panel is revealed; the glow drifts slowly. */
 @keyframes lab-draw { to { stroke-dashoffset: 0; } }
 @keyframes lab-glow { from { transform: translate(-6%, -4%) scale(1); } to { transform: translate(6%, 5%) scale(1.08); } }
@@ -414,6 +435,7 @@ body {
     transition: none;
   }
   .js .how-card .how-seq { opacity: 1; }
+  .plan-shape, .step-fill { transition: none !important; }
   .js .lab-canvas .lab-draw path { stroke-dashoffset: 0; animation: none !important; }
   .lab-glow, .lab-twinkle, .lab-drop.is-dragging { animation: none !important; }
   .lab-go:hover:not(:disabled) { transform: none; }

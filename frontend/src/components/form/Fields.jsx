@@ -1,7 +1,9 @@
+import { AlertCircle, ChevronDown } from 'lucide-react'
+
 export function FieldShell({ id, label, error, hint, required = true, children }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 flex items-center justify-between text-sm font-semibold text-ink">
+      <label htmlFor={id} className="mb-2 flex items-center justify-between text-sm font-semibold text-ink">
         <span>
           {label}
           {required ? (
@@ -14,7 +16,8 @@ export function FieldShell({ id, label, error, hint, required = true, children }
       {children}
       {hint && !error && <p id={`${id}-hint`} className="mt-1 text-xs text-muted">{hint}</p>}
       {error && (
-        <p id={`${id}-error`} role="alert" className="anim-up mt-1.5 text-xs font-medium text-red-700">
+        <p id={`${id}-error`} role="alert" className="anim-up mt-1.5 flex items-start gap-1.5 text-xs font-medium text-red-700">
+          <AlertCircle aria-hidden="true" className="mt-px h-3.5 w-3.5 shrink-0" />
           {error}
         </p>
       )}
@@ -22,9 +25,10 @@ export function FieldShell({ id, label, error, hint, required = true, children }
   )
 }
 
-const inputClass = (error) =>
-  `w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-colors text-ink focus:outline-none focus:ring-2 focus:ring-sage-dark focus:border-sage-dark ${
-    error ? 'border-red-400 bg-red-50/40' : 'border-line hover:border-muted/50'
+// Inset fields: a step darker than the card, a sage ring on focus, a firmer border once filled.
+const inputClass = (error, filled) =>
+  `field h-11 w-full rounded-lg border bg-cream px-3.5 text-sm text-ink focus:outline-none ${
+    error ? 'border-red-400' : filled ? 'border-muted/45 hover:border-muted/70' : 'border-line hover:border-muted/50'
   }`
 
 const describe = (id, error, hint) =>
@@ -33,6 +37,7 @@ const describe = (id, error, hint) =>
 export function SelectField({ id, label, value, onChange, options, error, required = true, placeholder = 'Select…' }) {
   return (
     <FieldShell id={id} label={label} error={error} required={required}>
+      <div className={`relative ${error ? 'anim-shake' : ''}`}>
       <select
         id={id}
         name={id}
@@ -40,13 +45,15 @@ export function SelectField({ id, label, value, onChange, options, error, requir
         onChange={(e) => onChange(e.target.value)}
         aria-invalid={!!error}
         aria-describedby={describe(id, error)}
-        className={`${inputClass(error)} cursor-pointer ${error ? 'anim-shake' : ''}`}
+        className={`${inputClass(error, !!value)} cursor-pointer appearance-none pr-10 ${value ? '' : 'text-muted'}`}
       >
         <option value="">{placeholder}</option>
         {options.map((o) => (
           <option key={o} value={o}>{o}</option>
         ))}
       </select>
+      <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+      </div>
     </FieldShell>
   )
 }
@@ -72,10 +79,10 @@ export function NumberField({ id, label, value, onChange, error, hint, suffix, p
           onChange={(e) => onChange(e.target.value)}
           aria-invalid={!!error}
           aria-describedby={describe(id, error, hint)}
-          className={`${inputClass(error)} ${prefix ? 'pl-8' : ''} ${suffix ? 'pr-9' : ''}`}
+          className={`${inputClass(error, value !== '' && value != null)} tabular-nums ${prefix ? 'pl-8' : ''} ${suffix ? 'pr-10' : ''}`}
         />
         {suffix && (
-          <span aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted">
+          <span aria-hidden="true" className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold uppercase tracking-wider text-muted">
             {suffix}
           </span>
         )}

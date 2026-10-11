@@ -112,8 +112,7 @@ export default function ResultsSection({
             </Button>
           </div>
           <div className="w-full max-w-[16rem]">
-            <h3 className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Room outline</h3>
-            <FloorPlan length={form.length} width={form.width} styleId={form.style} />
+            <FloorPlan length={form.length} width={form.width} height={form.height} />
           </div>
         </div>
       </Card>

@@ -73,8 +73,8 @@ export default function RoomForm({ form, setForm, image, setImage, onSubmit, sub
   }
 
   return (
-    <form ref={formRef} onSubmit={submit} noValidate aria-label="Room details" className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(18rem,0.9fr)]">
-      <div>
+    <form ref={formRef} onSubmit={submit} noValidate aria-label="Room details" className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(19rem,0.9fr)] lg:gap-8">
+      <div className="reveal min-w-0">
         <Stepper step={step} onJump={(n) => { if (n < step || validateStep(step)) setStep(n) }} />
 
         <div key={step} className={dir === 'back' ? 'anim-from-left' : 'anim-from-right'}>
@@ -83,9 +83,13 @@ export default function RoomForm({ form, setForm, image, setImage, onSubmit, sub
             <Card>
               <ImageUploader file={image.file} previewUrl={image.url} error={imageError} onSelect={selectImage} onClear={() => { setImage(null); setImageError('') }} />
             </Card>
-            <Card className="space-y-4">
+            <Card className="space-y-5">
+              <div>
+                <h3 className="font-display text-xl font-semibold">The room</h3>
+                <p className="mt-0.5 text-xs text-muted">Measure wall to wall, in feet. Rough is fine.</p>
+              </div>
               <SelectField id="roomType" label="Room type" value={form.roomType} onChange={set('roomType')} options={ROOM_TYPES} error={errors.roomType} />
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 <NumberField id="length" label="Length" suffix="ft" value={form.length} onChange={set('length')} error={errors.length} min={LIMITS.length[0]} max={LIMITS.length[1]} />
                 <NumberField id="width" label="Width" suffix="ft" value={form.width} onChange={set('width')} error={errors.width} min={LIMITS.width[0]} max={LIMITS.width[1]} />
                 <NumberField id="height" label="Height" suffix="ft" value={form.height} onChange={set('height')} error={errors.height} min={LIMITS.height[0]} max={LIMITS.height[1]} />
@@ -135,15 +139,15 @@ export default function RoomForm({ form, setForm, image, setImage, onSubmit, sub
 
         {apiError && <p role="alert" className="mt-4 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-800">{apiError}</p>}
 
-        <div className="mt-6 flex flex-wrap justify-between gap-3">
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
           {step > 1 ? (
             <Button variant="ghost" onClick={() => setStep((s) => s - 1)}>
               <ArrowLeft aria-hidden="true" className="h-4 w-4" /> Back
             </Button>
           ) : <span />}
           {step < 3 ? (
-            <Button type="button" onClick={next}>
-              Continue <ArrowRight aria-hidden="true" className="h-4 w-4" />
+            <Button type="button" onClick={next} className="group min-w-[9.5rem]">
+              Continue <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </Button>
           ) : (
             <Button type="submit" disabled={submitting} aria-busy={submitting}>
@@ -153,7 +157,9 @@ export default function RoomForm({ form, setForm, image, setImage, onSubmit, sub
           )}
         </div>
       </div>
-      <RoomBrief form={form} imageUrl={image.url} />
+      <div className="reveal min-w-0 lg:sticky lg:top-20" style={{ transitionDelay: '120ms' }}>
+        <RoomBrief form={form} imageUrl={image.url} />
+      </div>
     </form>
   )
 }

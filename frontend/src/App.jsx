@@ -218,9 +218,11 @@ export default function App() {
             <VastuSection onStartVastu={startVastu} onOpenDesigner={openDesigner} />
             <DesignStyles onSelectStyle={selectStyle} selected={form.style} />
             <section id="redesign" aria-labelledby="form-heading" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:py-28">
+              <div className="reveal">
               <p className="eyebrow">Design My Space</p>
-              <h2 id="form-heading" className="mt-4 font-display text-4xl font-medium leading-none sm:text-5xl lg:text-6xl">Tell us about your room.</h2>
-              <p className="mb-10 mt-4 max-w-xl text-sm leading-relaxed text-muted sm:text-base">Three short steps. All fields except Vastu are required. Your photo is sent to the SpaceSense server for analysis, which may use Google's Gemini. It is only edited if you approve.</p>
+              <h2 id="form-heading" className="mt-4 font-display text-4xl font-semibold leading-[0.95] tracking-[-0.01em] sm:text-5xl lg:text-6xl">Tell us about your room.</h2>
+              </div>
+              <p className="reveal mb-10 mt-4 max-w-xl text-sm leading-relaxed text-muted sm:text-base" style={{ transitionDelay: '90ms' }}>Three short steps. All fields except Vastu are required. Your photo is sent to the SpaceSense server for analysis, which may use Google's Gemini. It is only edited if you approve.</p>
               {restored && !result && !image.file && (
                 <p role="status" className="-mt-6 mb-8 max-w-xl rounded-xl border border-line bg-sand/60 p-3 text-sm">Saved look loaded. Add your room photo and generate again to see it.</p>
               )}
