@@ -13,7 +13,7 @@ export default function StyleSelector({ value, onChange, error }) {
           return (
             <label
               key={s.id}
-              className={`relative cursor-pointer rounded-xl border p-3.5 text-left transition-all has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-sage-dark has-[:focus-visible]:ring-offset-2 ${
+              className={`spotlight cursor-pointer rounded-xl border p-3.5 text-left transition-all hover:-translate-y-0.5 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-sage-dark has-[:focus-visible]:ring-offset-2 ${
                 isSelected
                   ? 'border-sage-dark bg-sage/15 shadow-sm ring-2 ring-sage-dark'
                   : 'border-line bg-white hover:border-muted/50 hover:bg-sand/60'

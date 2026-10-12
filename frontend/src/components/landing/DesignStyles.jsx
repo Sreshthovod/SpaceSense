@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { ArrowUpRight, Check } from 'lucide-react'
 import { useTilt } from '../../hooks/usePointerEffects'
+import SplitText from '../ui/SplitText'
 
 // Directions for the little burst when a style is picked.
 const SPARKS = Array.from({ length: 10 }, (_, i) => {
@@ -32,7 +33,7 @@ export default function DesignStyles({ onSelectStyle, selected }) {
       <div className="reveal flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="eyebrow">Design Styles</p>
-          <h2 id="styles-heading" className="mt-4 font-display text-4xl font-medium leading-none sm:text-5xl lg:text-6xl">Find your look.</h2>
+          <h2 id="styles-heading" aria-label="Find your look." className="mt-4 font-display text-4xl font-medium leading-none sm:text-5xl lg:text-6xl"><SplitText text="Find your look." /></h2>
         </div>
         <p className="max-w-sm text-sm leading-relaxed text-muted sm:text-base">Click any style to start your redesign with it already chosen.</p>
       </div>
@@ -47,7 +48,8 @@ export default function DesignStyles({ onSelectStyle, selected }) {
               {...tilt}
               aria-pressed={active}
               aria-label={`Start a redesign in the ${t.name} style`}
-              className={`tilt group relative block w-full cursor-pointer overflow-hidden rounded-xl text-left hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-dark ${active ? 'ring-2 ring-brass ring-offset-2 ring-offset-cream' : ''}`}
+              data-cursor="pick"
+              className={`tilt scroll-grow group relative block w-full cursor-pointer overflow-hidden rounded-xl text-left hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-dark ${active ? 'ring-2 ring-brass ring-offset-2 ring-offset-cream' : ''}`}
             >
               <img
                 src={t.img}

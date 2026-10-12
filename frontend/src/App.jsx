@@ -24,6 +24,10 @@ import useTheme from './hooks/useTheme'
 import useAppCommands from './hooks/useAppCommands'
 import CommandPalette from './components/ui/CommandPalette'
 import ScrollExtras from './components/layout/ScrollExtras'
+import Cursor from './components/layout/Cursor'
+import IntroCurtain from './components/layout/IntroCurtain'
+import Marquee from './components/layout/Marquee'
+import SplitText from './components/ui/SplitText'
 
 const RoomDesigner = lazy(() => import('./designer/RoomDesigner'))
 
@@ -189,6 +193,9 @@ export default function App() {
   return (
     <div className="flex min-h-screen flex-col">
       <a href="#main-content" className="skip-link">Skip to main content</a>
+      <IntroCurtain />
+      {/* The 3D designer has its own pointer tools, so it keeps the native cursor. */}
+      {!designerOpen && <Cursor />}
       {!designerOpen && <ScrollExtras />}
       <Navbar onHome={leaveResults} studio={studio && !authRoute} onOpenDesigner={openDesigner} onReset={reset} onOpenPalette={() => setPaletteOpen(true)} />
       {phase === 'composing' && <StudioCurtain form={form} imageUrl={image.url} />}
@@ -212,13 +219,14 @@ export default function App() {
         ) : (
           <>
             <Hero onStart={leaveResults} onOpenDesigner={openDesigner} />
+            <Marquee />
             <HowItWorks />
             <VastuSection onStartVastu={startVastu} onOpenDesigner={openDesigner} />
             <DesignStyles onSelectStyle={selectStyle} selected={form.style} />
             <section id="redesign" aria-labelledby="form-heading" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:py-28">
               <div className="reveal">
               <p className="eyebrow">Design My Space</p>
-              <h2 id="form-heading" className="mt-4 font-display text-4xl font-semibold leading-[0.95] tracking-[-0.01em] sm:text-5xl lg:text-6xl">Tell us about your room.</h2>
+              <h2 id="form-heading" aria-label="Tell us about your room." className="mt-4 font-display text-4xl font-semibold leading-[0.95] tracking-[-0.01em] sm:text-5xl lg:text-6xl"><SplitText text="Tell us about your room." /></h2>
               </div>
               <p className="reveal mb-10 mt-4 max-w-xl text-sm leading-relaxed text-muted sm:text-base" style={{ transitionDelay: '90ms' }}>Three short steps. All fields except Vastu are required. Your photo is sent to the SpaceSense server for analysis, which may use Google's Gemini. It is only edited if you approve.</p>
               {restored && !result && !image.file && (

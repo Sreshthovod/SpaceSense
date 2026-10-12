@@ -86,7 +86,7 @@ export default function ChatPanel({ form, photo, recommendations }) {
           </div>
         )}
         {messages.map((m, i) => (
-          <div key={i} className={`anim-up ${m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}`}>
+          <div key={i} className={`bubble-in ${m.role === 'user' ? 'bubble-in-own flex justify-end' : 'flex justify-start'}`}>
             <p
               className={`max-w-[85%] whitespace-pre-line rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                 m.role === 'user' ? 'bg-ink text-cream' : 'border border-line bg-cream'

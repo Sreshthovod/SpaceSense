@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { AlertCircle, ChevronDown, Download, Expand, ImagePlus, Loader2, RefreshCw, Shuffle, Sparkles, Trash2, Upload, X } from 'lucide-react'
 import { editImage, generateImage, getImageProviders } from '../../services/api'
 import { LAB_CHIPS, LAB_PROMPTS } from './labPrompts'
+import SplitText from '../ui/SplitText'
 
 const MAX_PROMPT = 2048
 const MAX_UPLOAD_MB = 5
@@ -171,8 +172,8 @@ export default function ImageGenerator() {
       <div className="reveal flex flex-wrap items-end justify-between gap-6">
         <div>
           <p className="eyebrow">Image Lab · optional playground</p>
-          <h2 id="image-lab-heading" className="mt-4 flex items-start gap-3 font-display text-4xl font-semibold leading-none tracking-[-0.01em] sm:text-5xl lg:text-6xl">
-            Just for fun.
+          <h2 id="image-lab-heading" aria-label="Just for fun." className="mt-4 flex items-start gap-3 font-display text-4xl font-semibold leading-none tracking-[-0.01em] sm:text-5xl lg:text-6xl">
+            <SplitText text="Just for fun." />
             <Sparkles aria-hidden="true" strokeWidth={1.5} className="lab-twinkle mt-1 h-6 w-6 shrink-0 text-sage-dark sm:h-7 sm:w-7" />
           </h2>
         </div>
@@ -183,7 +184,7 @@ export default function ImageGenerator() {
 
       <div className="mt-10 grid grid-cols-1 gap-5 lg:mt-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-6">
         {/* Prompt studio */}
-        <div className="reveal rounded-xl border border-line bg-white p-5 sm:p-7">
+        <div className="reveal reveal-left spotlight rounded-xl border border-line bg-white p-5 sm:p-7">
           <form onSubmit={submit} className="space-y-6">
             <div>
               <div className="mb-2 flex items-baseline justify-between gap-3">
@@ -326,7 +327,7 @@ export default function ImageGenerator() {
         </div>
 
         {/* Canvas */}
-        <div className="reveal lab-canvas flex flex-col rounded-xl border border-line bg-white p-3 sm:p-4" style={{ transitionDelay: '120ms' }}>
+        <div className="reveal reveal-right lab-canvas flex flex-col rounded-xl border border-line bg-white p-3 sm:p-4" style={{ transitionDelay: '120ms' }}>
           <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg bg-cream lg:aspect-auto lg:min-h-[26rem] lg:flex-1">
             {pending ? (
               <div role="status" className="absolute inset-0">

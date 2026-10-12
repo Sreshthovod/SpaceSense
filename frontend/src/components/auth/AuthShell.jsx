@@ -15,7 +15,7 @@ export default function AuthShell({ eyebrow = 'Your account', title, intro, chil
         {title}
       </h1>
       {intro && <p className="mt-3 text-sm leading-relaxed text-muted" style={{ '--i': 2 }}>{intro}</p>}
-      <Card className="mt-8 shadow-lg" style={{ '--i': 3 }}>{children}</Card>
+      <Card spotlight className="mt-8 shadow-lg" style={{ '--i': 3 }}>{children}</Card>
       {footer && <div className="mt-6 text-center text-sm text-muted" style={{ '--i': 4 }}>{footer}</div>}
     </section>
   )

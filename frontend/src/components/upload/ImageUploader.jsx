@@ -75,7 +75,7 @@ export default function ImageUploader({ file, previewUrl, error, onSelect, onCle
           onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
           onDragLeave={() => setDragging(false)}
           onDrop={(e) => { e.preventDefault(); setDragging(false); handleFiles(e.dataTransfer.files) }}
-          className={`drop-zone group relative flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border px-5 py-10 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-dark sm:py-12 ${
+          className={`drop-zone spotlight group flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border px-5 py-10 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-dark sm:py-12 ${
             dragging ? 'is-dragging border-sage-dark bg-sand' : error ? 'border-red-400 bg-cream' : 'border-line bg-cream hover:border-muted/60 hover:bg-sand/70'
           }`}
         >

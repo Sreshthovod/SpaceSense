@@ -2,6 +2,7 @@ import { ArrowUpRight, Check, Upload } from 'lucide-react'
 import { ROOM_TYPES, STYLES } from '../../data/sampleData'
 import { FLOOR_ITEMS, WALL_ITEMS } from '../../designer/model/catalog'
 import { useCountUp } from '../../hooks/usePointerEffects'
+import SplitText from '../ui/SplitText'
 
 // Real counts from the app's own data, so the figures can't drift from what's actually offered.
 const STATS = [
@@ -99,7 +100,7 @@ export default function HowItWorks() {
       <div className="reveal flex flex-wrap items-end justify-between gap-6">
         <div>
           <p className="eyebrow">How It Works</p>
-          <h2 id="how-it-works-heading" className="mt-4 font-display text-4xl font-semibold leading-[0.95] tracking-[-0.01em] sm:text-5xl lg:text-6xl">Three simple steps.</h2>
+          <h2 id="how-it-works-heading" aria-label="Three simple steps." className="mt-4 font-display text-4xl font-semibold leading-[0.95] tracking-[-0.01em] sm:text-5xl lg:text-6xl"><SplitText text="Three simple steps." /></h2>
         </div>
         <p className="max-w-sm text-sm leading-relaxed text-muted sm:text-base">From a photo of your room to a plan you can act on, at your pace.</p>
       </div>
@@ -109,7 +110,7 @@ export default function HowItWorks() {
           const wide = i === 2 // spans both columns on tablets
           return (
           <li key={n} className={`reveal how-card ${wide ? 'md:col-span-2 lg:col-span-1' : ''}`} style={{ transitionDelay: `${i * 110}ms`, '--d': `${i * 110}ms` }}>
-            <article className={`how-lift group flex h-full flex-col rounded-xl border border-line bg-white p-6 sm:p-7 ${wide ? 'md:max-lg:grid md:max-lg:grid-cols-2 md:max-lg:gap-7' : ''}`}>
+            <article className={`spotlight how-lift group flex h-full flex-col rounded-xl border border-line bg-white p-6 sm:p-7 ${wide ? 'md:max-lg:grid md:max-lg:grid-cols-2 md:max-lg:gap-7' : ''}`}>
               <div className="flex flex-1 flex-col">
                 <span className="how-seq how-num font-display text-5xl font-semibold leading-none tabular-nums text-sage sm:text-6xl">0{n}</span>
                 <h3 className="how-seq mt-5 font-display text-[1.75rem] font-semibold leading-tight sm:text-3xl" style={{ '--s': '1' }}>{title}</h3>

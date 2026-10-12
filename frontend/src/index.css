@@ -129,14 +129,25 @@ body {
 
 .js .reveal {
   opacity: 0;
-  transform: translateY(18px);
-  transition: opacity 0.8s ease, transform 0.8s ease;
+  transform: translateY(22px);
+  filter: blur(4px);
+  transition: opacity 0.9s var(--ease-out), transform 0.9s var(--ease-out), filter 0.9s var(--ease-out);
 }
+.js .reveal-left { transform: translateX(-32px); }
+.js .reveal-right { transform: translateX(32px); }
+.js .reveal-scale { transform: scale(0.94); }
 
 .js .reveal.is-visible {
   opacity: 1;
   transform: none;
+  filter: none;
 }
+
+/* Eyebrow rules draw in when their section arrives. */
+.eyebrow::before { transform-origin: left; }
+.js .reveal .eyebrow::before { transform: scaleX(0); transition: transform 0.9s var(--ease-out) 0.25s; }
+.js .reveal.is-visible .eyebrow::before { transform: none; }
+.hero-stagger .eyebrow::before { animation: draw-x 0.9s var(--ease-out) 0.35s backwards; }
 
 @keyframes kenburns {
   from { transform: scale(1.06) translate3d(0, 0, 0); }
@@ -420,6 +431,222 @@ body {
 
 .stage-fill { transform-origin: left; animation: stage-fill 6s var(--ease-out) both; }
 
+/* ---- Custom cursor (desktop only; Cursor.jsx adds .has-cursor) ---- */
+html.has-cursor, html.has-cursor * { cursor: none !important; }
+html.has-cursor :is(input:not([type=checkbox], [type=radio], [type=range], [type=button], [type=submit], [type=file]), textarea, [contenteditable="true"]) { cursor: text !important; }
+html.has-cursor select { cursor: auto !important; }
+.cursor-dot, .cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 200;
+  pointer-events: none;
+  will-change: transform;
+}
+.cursor-dot {
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 9999px;
+  background: var(--color-ink);
+  transition: opacity var(--dur) ease, background-color var(--dur) ease;
+}
+.cursor-ring { width: 0; height: 0; }
+.cursor-ring-shape {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  translate: -50% -50%;
+  border: 1px solid color-mix(in srgb, var(--color-ink) 45%, transparent);
+  border-radius: 9999px;
+  transition: width 0.35s var(--ease-out), height 0.35s var(--ease-out), background-color 0.3s ease, border-color 0.3s ease, scale 0.35s var(--ease-spring), opacity 0.3s ease;
+}
+.cursor-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-cream);
+  opacity: 0;
+  scale: 0.6;
+  transition: opacity 0.2s ease, scale 0.3s var(--ease-spring);
+}
+.cursor-ring[data-state="hover"] .cursor-ring-shape {
+  width: 58px;
+  height: 58px;
+  background: color-mix(in srgb, var(--color-sage) 16%, transparent);
+  border-color: color-mix(in srgb, var(--color-sage-dark) 70%, transparent);
+}
+.cursor-ring[data-state="label"] .cursor-ring-shape {
+  width: 76px;
+  height: 76px;
+  background: color-mix(in srgb, var(--color-ink) 82%, transparent);
+  border-color: transparent;
+  backdrop-filter: blur(4px);
+}
+.cursor-ring[data-state="label"] .cursor-label { opacity: 1; scale: 1; }
+.cursor-dot[data-state="label"] { opacity: 0; }
+.cursor-ring[data-state="text"] .cursor-ring-shape { opacity: 0; scale: 0.4; }
+.cursor-dot[data-state="text"] { opacity: 0; }
+.cursor-ring[data-down] .cursor-ring-shape { scale: 0.82; }
+.cursor-ring[data-dark="true"]:not([data-state="label"]) .cursor-ring-shape { border-color: rgb(247 245 240 / 0.6); }
+.cursor-dot[data-dark="true"] { background: #f7f5f0; }
+.cursor-ring[data-hidden] .cursor-ring-shape, .cursor-dot[data-hidden] { opacity: 0; }
+
+/* A soft warm light that follows the pointer across the page. */
+.page-spotlight {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  width: 1000px;
+  height: 1000px;
+  margin: -500px 0 0 -500px;
+  border-radius: 9999px;
+  pointer-events: none;
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-brass) 10%, transparent), transparent 62%);
+  will-change: transform;
+  transition: opacity 0.6s ease;
+}
+.page-spotlight[data-hidden] { opacity: 0; }
+
+/* Cards that catch the light: Cursor.jsx sets --sx / --sy on the hovered .spotlight element. */
+.spotlight { position: relative; isolation: isolate; }
+.spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(360px circle at var(--sx, 50%) var(--sy, 50%), color-mix(in srgb, var(--color-brass) 11%, transparent), transparent 65%);
+  opacity: 0;
+  transition: opacity var(--dur-slow) ease;
+}
+.spotlight::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  padding: 1px;
+  background: radial-gradient(220px circle at var(--sx, 50%) var(--sy, 50%), color-mix(in srgb, var(--color-brass) 70%, transparent), transparent 70%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  opacity: 0;
+  transition: opacity var(--dur-slow) ease;
+}
+html.has-cursor .spotlight:hover::before, html.has-cursor .spotlight:hover::after { opacity: 1; }
+
+/* Buttons that lean towards the pointer (Cursor.jsx sets `translate`). */
+[data-magnetic] { transition: translate 0.5s var(--ease-spring), background-color 0.2s, color 0.2s, transform var(--dur-fast) var(--ease-out); }
+
+/* A light sweep across primary buttons on hover. */
+.shine { position: relative; overflow: hidden; isolation: isolate; }
+.shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.35) 50%, transparent 65%);
+  transform: translateX(-110%);
+}
+.shine:hover::after { transition: transform 0.8s var(--ease-out); transform: translateX(110%); }
+
+/* Press ripple: Button sets --rpx / --rpy where it was pressed and replays .is-rippling. */
+.ripple { position: relative; overflow: hidden; isolation: isolate; }
+.ripple.is-rippling::before {
+  content: "";
+  position: absolute;
+  left: var(--rpx, 50%);
+  top: var(--rpy, 50%);
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0.25;
+  pointer-events: none;
+  animation: ripple 0.6s var(--ease-out) forwards;
+}
+@keyframes ripple { to { transform: scale(28); opacity: 0; } }
+
+/* Headlines whose words slide up out of a mask (SplitText). */
+.split-word { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.12em; margin-bottom: -0.12em; }
+.split-word > span { display: inline-block; }
+@keyframes word-up { from { transform: translateY(110%) rotate(4deg); } to { transform: none; } }
+.split-load .split-word > span { animation: word-up 1s var(--ease-out) backwards; animation-delay: calc(0.15s + var(--i, 0) * 90ms); }
+.js .reveal .split:not(.split-load) .split-word > span { transform: translateY(110%) rotate(4deg); transition: transform 1s var(--ease-out); transition-delay: calc(0.1s + var(--i, 0) * 70ms); }
+.js .reveal.is-visible .split:not(.split-load) .split-word > span { transform: none; }
+
+/* Hero: the photo opens out from a framed window, and two soft lights drift behind the copy. */
+@keyframes hero-open { from { clip-path: inset(8% 6% 8% 42% round 28px); } to { clip-path: inset(0 0 0 0 round 0); } }
+.hero-open { animation: hero-open 1.5s var(--ease-out) 0.1s backwards; }
+@keyframes float-a { from { transform: translate(0, 0) scale(1); } to { transform: translate(40px, -30px) scale(1.15); } }
+@keyframes float-b { from { transform: translate(0, 0) scale(1.1); } to { transform: translate(-50px, 30px) scale(0.95); } }
+.hero-blob { position: absolute; border-radius: 9999px; filter: blur(70px); pointer-events: none; }
+.hero-blob-a { animation: float-a 14s ease-in-out infinite alternate; }
+.hero-blob-b { animation: float-b 18s ease-in-out infinite alternate; }
+
+/* First-visit wordmark curtain. */
+@keyframes intro-lift { 0%, 55% { transform: none; } 100% { transform: translateY(-100%); } }
+@keyframes intro-mark { from { opacity: 0; letter-spacing: 0.4em; filter: blur(6px); } to { opacity: 1; letter-spacing: 0.02em; filter: none; } }
+.intro-curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: var(--color-cream);
+  pointer-events: none;
+  animation: intro-lift 1.25s cubic-bezier(0.76, 0, 0.24, 1) forwards;
+}
+.intro-mark { font-size: clamp(2.5rem, 7vw, 4.5rem); font-weight: 500; color: var(--color-ink); animation: intro-mark 0.7s var(--ease-out) backwards; }
+.intro-line { width: 5rem; height: 1px; background: var(--color-brass); transform-origin: left; animation: draw-x 0.6s var(--ease-out) 0.2s backwards; }
+
+/* Feature ticker. */
+@keyframes marquee { to { transform: translateX(-50%); } }
+.marquee-track { animation: marquee 40s linear infinite; }
+.marquee:hover .marquee-track { animation-play-state: paused; }
+
+/* Navbar: a bar that glides under the active link, and a header that tucks away while scrolling down. */
+.nav-link[aria-current="true"]::after { transform: scaleX(0); }
+.nav-link[aria-current="true"]:hover::after { transform: scaleX(0); }
+.nav-indicator { position: absolute; bottom: -8px; left: 0; height: 2px; border-radius: 2px; background: var(--color-brass); transition: transform 0.45s var(--ease-out), width 0.45s var(--ease-out), opacity 0.3s ease; }
+.nav-tuck { transition: transform 0.4s var(--ease-out), box-shadow 0.3s ease; }
+.nav-tuck.is-tucked { transform: translateY(-100%); }
+
+/* Scroll-linked growth for style tiles where the browser supports it. */
+@supports (animation-timeline: view()) {
+  @keyframes grow-in { from { scale: 0.93; opacity: 0.6; } to { scale: 1; opacity: 1; } }
+  .scroll-grow { animation: grow-in linear both; animation-timeline: view(); animation-range: entry 0% cover 35%; }
+}
+
+/* Chat bubbles and toasts arrive with a little give. */
+@keyframes bubble-in { from { opacity: 0; transform: translateY(10px) scale(0.96); } to { opacity: 1; transform: none; } }
+.bubble-in { animation: bubble-in 0.45s var(--ease-spring) backwards; transform-origin: bottom left; }
+.bubble-in-own { transform-origin: bottom right; }
+@keyframes toast-bar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.toast-bar { transform-origin: left; animation: toast-bar linear forwards; }
+
+/* Palette swatches lift and show their code. */
+.swatch { transition: transform var(--dur) var(--ease-spring), box-shadow var(--dur) ease; }
+.swatch:hover { transform: translateY(-4px) scale(1.04); box-shadow: 0 10px 20px -10px color-mix(in srgb, var(--color-ink) 45%, transparent); }
+
+/* Before/after handle: a one-off pulse to say "drag me". */
+@keyframes handle-hint { 0%, 100% { box-shadow: 0 0 0 0 rgb(255 255 255 / 0.7); } 50% { box-shadow: 0 0 0 12px rgb(255 255 255 / 0); } }
+.handle-hint { animation: handle-hint 1.6s ease-out 0.8s 2; }
+
 /* Entrance animations fill backwards only, so once finished they never pin `transform` (hover lifts keep working). */
 
 /* Theme switch: the browser cross-fades by default; the toggle animates a circle instead. */
@@ -456,6 +683,18 @@ body {
     transform: none !important;
     transition: none !important;
   }
+
+  .js .reveal { filter: none; }
+  .js .reveal .eyebrow::before,
+  .hero-stagger .eyebrow::before { transform: none; animation: none; }
+  .split-load .split-word > span,
+  .js .reveal .split .split-word > span { transform: none !important; animation: none !important; }
+  .hero-open, .hero-blob-a, .hero-blob-b, .marquee-track, .scroll-grow, .bubble-in, .handle-hint, .ripple.is-rippling::before { animation: none !important; }
+  .intro-curtain, .page-spotlight, .cursor-dot, .cursor-ring { display: none; }
+  .shine::after { display: none; }
+  .swatch:hover { transform: none; }
+  [data-magnetic] { translate: none !important; }
+  .nav-tuck.is-tucked { transform: none; }
 
   .anim-nudge,
   .drift-bg,

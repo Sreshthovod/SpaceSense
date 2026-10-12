@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { prefersReducedMotion, tween } from '../utils/motion'
 
 // Pointer effects only make sense with a real hovering pointer and when motion is welcome.
-const canHover = () => {
+export const canHover = () => {
   try {
     return window.matchMedia?.('(hover: hover) and (pointer: fine)').matches && !prefersReducedMotion()
   } catch {
@@ -90,4 +90,37 @@ export function useCountUp(value, ms = 1200) {
     }
   }, [value, ms])
   return [ref, shown]
+}
+
+/**
+ * Moves an element against the scroll while it is on screen (`speed` px per px scrolled past the
+ * viewport centre), for layered depth. Sets the `translate` property so it never fights `transform`.
+ */
+export function useScrollParallax(speed = 0.08) {
+  const ref = useRef(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || prefersReducedMotion() || typeof IntersectionObserver === 'undefined') return undefined
+    let frame = 0
+    let onScreen = false
+    const update = () => {
+      frame = 0
+      const r = el.getBoundingClientRect()
+      const offset = (r.top + r.height / 2 - window.innerHeight / 2) * -speed
+      el.style.translate = `0 ${offset.toFixed(1)}px`
+    }
+    const onScroll = () => { if (onScreen && !frame) frame = requestAnimationFrame(update) }
+    const io = new IntersectionObserver(([entry]) => {
+      onScreen = entry.isIntersecting
+      if (onScreen) onScroll()
+    }, { rootMargin: '120px 0px' })
+    io.observe(el)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      io.disconnect()
+      cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', onScroll)
+    }
+  }, [speed])
+  return ref
 }

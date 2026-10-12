@@ -30,7 +30,7 @@ function ToastItem({ item, onDismiss }) {
 
   return (
     <li
-      className={`pointer-events-auto flex w-full items-start gap-3 rounded-xl border border-line bg-white p-3 pr-2 text-sm text-ink shadow-lg ${item.leaving ? 'anim-out-right' : 'anim-from-right'}`}
+      className={`pointer-events-auto relative flex w-full items-start gap-3 overflow-hidden rounded-xl border border-line bg-white p-3 pr-2 text-sm text-ink shadow-lg ${item.leaving ? 'anim-out-right' : 'anim-from-right'}`}
       style={dx ? { transform: `translateX(${dx}px)`, opacity: Math.max(0, 1 - dx / 160) } : undefined}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -46,7 +46,7 @@ function ToastItem({ item, onDismiss }) {
         else setDx(0)
       }}
     >
-      <Icon aria-hidden="true" className={`mt-0.5 h-4 w-4 shrink-0 ${TONE[item.tone] ?? TONE.info}`} />
+      <Icon aria-hidden="true" className={`anim-pop mt-0.5 h-4 w-4 shrink-0 ${TONE[item.tone] ?? TONE.info}`} />
       <p className="min-w-0 flex-1 leading-snug">{item.message}</p>
       {item.action && (
         <button
@@ -60,6 +60,14 @@ function ToastItem({ item, onDismiss }) {
       <button type="button" onClick={() => onDismiss(item.id)} aria-label="Dismiss notification" className="shrink-0 rounded-full p-1 text-muted hover:bg-sand hover:text-ink">
         <X aria-hidden="true" className="h-3.5 w-3.5" />
       </button>
+      {/* How long until it closes on its own; it holds still while the toast is hovered or focused. */}
+      {item.duration > 0 && !item.leaving && (
+        <span
+          aria-hidden="true"
+          className={`toast-bar absolute inset-x-0 bottom-0 h-0.5 ${item.tone === 'error' ? 'bg-red-400' : 'bg-sage'}`}
+          style={{ animationDuration: `${item.duration}ms`, animationPlayState: paused ? 'paused' : 'running' }}
+        />
+      )}
     </li>
   )
 }

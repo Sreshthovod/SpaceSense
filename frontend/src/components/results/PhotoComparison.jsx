@@ -24,7 +24,7 @@ export default function PhotoComparison({ originalUrl, editedUrl }) {
         <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-0.5 bg-white" style={{ left: `${pos}%` }} />
         <input
           type="range" min="0" max="100" value={pos} onChange={(e) => setPos(Number(e.target.value))}
-          aria-label="Compare original and edited photo" className="absolute inset-0 h-full w-full cursor-ew-resize opacity-0"
+          aria-label="Compare original and edited photo" data-cursor="drag" className="absolute inset-0 h-full w-full cursor-ew-resize opacity-0"
         />
       </div>
       <figcaption className="mt-2 text-xs text-muted">Drag to compare. AI edits can contain visual inaccuracies; check details before buying.</figcaption>

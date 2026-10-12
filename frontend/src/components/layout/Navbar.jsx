@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Home, Menu, Search, X } from 'lucide-react'
 import useActiveSection from '../../hooks/useActiveSection'
-import useNavCompact from '../../hooks/useNavCompact'
+import useNavCompact, { useNavTucked } from '../../hooks/useNavCompact'
 import { useAuth } from '../../context/auth'
 import { STUDIO_LINKS } from '../results/studioLinks'
 import ThemeToggle from './ThemeToggle'
@@ -20,6 +20,28 @@ function AccountLink({ user }) {
     <a href="#/account" className={`${cls} max-w-[10rem] truncate`} title={user.email}>{user.name}</a>
   ) : (
     <a href="#/login" className={cls}>Log in</a>
+  )
+}
+
+/** A brass bar that glides under whichever link in its (relative) list has aria-current. */
+function NavIndicator({ active }) {
+  const ref = useRef(null)
+  const [box, setBox] = useState(null)
+  useLayoutEffect(() => {
+    const list = ref.current?.parentElement
+    if (!list) return undefined
+    const measure = () => {
+      const on = list.querySelector('[aria-current="true"]')
+      setBox(on ? { left: on.offsetLeft, width: on.offsetWidth } : null)
+    }
+    measure()
+    if (typeof ResizeObserver === 'undefined') return undefined
+    const ro = new ResizeObserver(measure)
+    ro.observe(list)
+    return () => ro.disconnect()
+  }, [active])
+  return (
+    <li ref={ref} aria-hidden="true" className="nav-indicator" style={box ? { width: box.width, transform: `translateX(${box.left}px)` } : { width: 0, opacity: 0 }} />
   )
 }
 
@@ -45,6 +67,7 @@ export default function Navbar({ onHome, studio, onOpenDesigner, onReset, onOpen
   const menuButtonRef = useRef(null)
   const headerRef = useRef(null)
   const compact = useNavCompact()
+  const tucked = useNavTucked()
   const { user, logout } = useAuth()
   const sectionIds = useMemo(
     () => (studio ? STUDIO_LINKS.map((l) => l.id) : ['top', 'how-it-works', 'vastu', 'styles', 'redesign', 'image-lab']),
@@ -76,14 +99,15 @@ export default function Navbar({ onHome, studio, onOpenDesigner, onReset, onOpen
   }
 
   return (
-    <header ref={headerRef} className={`sticky top-0 z-40 border-b border-line bg-cream/85 backdrop-blur-md transition-[height,background] ${compact ? 'shadow-sm' : ''}`}>
+    <header ref={headerRef} className={`nav-tuck sticky top-0 z-40 border-b border-line bg-cream/85 backdrop-blur-md ${compact ? 'shadow-sm' : ''} ${tucked && !open ? 'is-tucked' : ''}`}>
       <nav aria-label="Main" className={`mx-auto flex max-w-7xl items-center justify-between px-5 sm:px-8 ${compact ? 'nav-compact' : 'h-16'}`}>
         <a href="#top" onClick={go} aria-label="SpaceSense home" className="flex items-center gap-2.5 rounded-sm">
           <Home aria-hidden="true" strokeWidth={1.5} className="h-5 w-5 text-sage-dark" />
           <span className="font-display text-2xl font-semibold tracking-tight">SpaceSense</span>
         </a>
         {studio ? (
-          <ul className="hidden items-center gap-6 text-[0.78rem] uppercase tracking-[0.14em] lg:flex">
+          <ul className="relative hidden items-center gap-6 text-[0.78rem] uppercase tracking-[0.14em] lg:flex">
+            <NavIndicator active={active} />
             {STUDIO_LINKS.map((l) => (
               <li key={l.href}>
                 <a href={l.href} aria-current={active === l.href ? 'true' : undefined} className={`nav-link rounded-sm transition-colors ${active === l.href ? 'text-ink' : 'text-muted hover:text-ink'}`}>{l.label}</a>
@@ -91,7 +115,8 @@ export default function Navbar({ onHome, studio, onOpenDesigner, onReset, onOpen
             ))}
           </ul>
         ) : (
-          <ul className="hidden items-center gap-5 whitespace-nowrap text-[0.78rem] uppercase tracking-[0.14em] lg:flex xl:gap-8">
+          <ul className="relative hidden items-center gap-5 whitespace-nowrap text-[0.78rem] uppercase tracking-[0.14em] lg:flex xl:gap-8">
+            <NavIndicator active={active} />
             {links.map((l) => (
               <li key={l.href}>
                 <a
@@ -122,7 +147,7 @@ export default function Navbar({ onHome, studio, onOpenDesigner, onReset, onOpen
                 Open 3D
               </button>
             )}
-            <button type="button" onClick={onReset} className="press bg-ink px-5 py-2.5 text-[0.8rem] font-medium uppercase tracking-[0.12em] text-cream transition-colors hover:bg-brass">
+            <button type="button" onClick={onReset} data-magnetic="" className="press shine bg-ink px-5 py-2.5 text-[0.8rem] font-medium uppercase tracking-[0.12em] text-cream transition-colors hover:bg-brass">
               Start over
             </button>
             <SearchButton onClick={onOpenPalette} />
@@ -131,7 +156,7 @@ export default function Navbar({ onHome, studio, onOpenDesigner, onReset, onOpen
         ) : (
           <div className="hidden items-center gap-3 whitespace-nowrap lg:flex xl:gap-5">
             <AccountLink user={user} />
-            <a href="#redesign" onClick={go} className="press bg-ink px-4 py-2.5 xl:px-5 text-[0.8rem] font-medium uppercase tracking-[0.12em] text-cream transition-colors hover:bg-brass">
+            <a href="#redesign" onClick={go} data-magnetic="" className="press shine bg-ink px-4 py-2.5 xl:px-5 text-[0.8rem] font-medium uppercase tracking-[0.12em] text-cream transition-colors hover:bg-brass">
             Design My Space
             </a>
             <SearchButton onClick={onOpenPalette} />

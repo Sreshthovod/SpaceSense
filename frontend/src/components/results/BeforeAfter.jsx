@@ -29,9 +29,12 @@ export default function BeforeAfter({ originalUrl, styleId, mood, lighting }) {
           value={pos}
           onChange={(e) => setPos(Number(e.target.value))}
           aria-label="Compare original photo with style concept"
+          data-cursor="drag"
           className="absolute inset-0 h-full w-full cursor-ew-resize opacity-0"
         />
-        <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-0.5 bg-white shadow-md" style={{ left: `${pos}%` }} />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-0.5 bg-white shadow-md" style={{ left: `${pos}%` }}>
+          <span className="handle-hint absolute left-1/2 top-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/80 bg-ink/70 text-[0.7rem] font-semibold tracking-tight text-white backdrop-blur">‹ ›</span>
+        </div>
       </div>
       <p className="mt-2 text-xs text-muted">The right side is illustrative stock photography of this style, not a version of your room. Mood and lighting are graded on the concept image; they do not rewrite your original file.</p>
     </div>

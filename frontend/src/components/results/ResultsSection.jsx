@@ -108,7 +108,7 @@ export default function ResultsSection({
       <div id="shop" className="reveal mt-6 scroll-mt-32">
         <FurniturePanel products={products} error={productsError} onRetry={retryProducts} retrying={retrying} />
       </div>
-      <Card id="designer-3d" className="reveal mt-6 scroll-mt-32">
+      <Card id="designer-3d" spotlight className="reveal mt-6 scroll-mt-32">
         <div className="grid gap-6 md:grid-cols-[1fr_auto] md:items-center">
           <div className="max-w-xl">
             <p className="eyebrow">Optional</p>

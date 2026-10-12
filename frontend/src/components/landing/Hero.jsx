@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { ArrowRight, ArrowUpRight, ChevronDown } from 'lucide-react'
 import usePrefersReducedMotion from '../../hooks/usePrefersReducedMotion'
 import { useParallax } from '../../hooks/usePointerEffects'
+import SplitText from '../ui/SplitText'
 
 export default function Hero({ onStart, onOpenDesigner }) {
   const reduced = usePrefersReducedMotion()
@@ -24,7 +25,7 @@ export default function Hero({ onStart, onOpenDesigner }) {
   return (
     <section id="top" className="relative isolate flex min-h-[calc(100svh-4rem)] flex-col overflow-hidden">
       <div ref={photoRef} className="absolute inset-0 -z-20 overflow-hidden">
-        <div ref={depthRef} className="absolute -inset-6 transition-[translate] duration-700 ease-[var(--ease-out)]">
+        <div ref={depthRef} className="hero-open absolute -inset-6 transition-[translate] duration-700 ease-[var(--ease-out)]">
         <img
           src="/images/hero.jpg"
           alt="Sunlit living room with warm wood panelling, a cream sofa and a low timber coffee table"
@@ -39,13 +40,17 @@ export default function Hero({ onStart, onOpenDesigner }) {
         aria-hidden="true"
         className="absolute inset-0 -z-10 bg-gradient-to-r from-cream/88 via-cream/45 to-transparent lg:from-cream/80 lg:via-cream/35 lg:to-transparent"
       />
+      <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden">
+        <span className="hero-blob hero-blob-a left-[-6rem] top-[12%] h-80 w-80 bg-sage-light/50" />
+        <span className="hero-blob hero-blob-b bottom-[8%] left-[22%] h-72 w-72 bg-brass/25" />
+      </div>
 
       <div className="mx-auto flex w-full max-w-7xl flex-1 items-center px-5 pb-16 pt-10 sm:px-8 lg:pb-20 lg:pt-14">
         <div className="hero-stagger min-w-0 max-w-xl">
           <p className="eyebrow">AI-Powered Interior Design</p>
-          <h1 className="mt-6 font-display text-ink">
-            <span className="block text-[2.35rem] font-medium uppercase leading-none tracking-[0.04em] min-[420px]:text-5xl sm:text-6xl">Your space.</span>
-            <em className="mt-1 block text-[3.1rem] font-light leading-[0.95] text-sage-dark min-[420px]:text-6xl sm:text-7xl lg:text-8xl">Reimagined.</em>
+          <h1 aria-label="Your space. Reimagined." className="mt-6 font-display text-ink">
+            <span className="block text-[2.35rem] font-medium uppercase leading-none tracking-[0.04em] min-[420px]:text-5xl sm:text-6xl"><SplitText text="Your space." onLoad /></span>
+            <em className="mt-1 block text-[3.1rem] font-light leading-[0.95] text-sage-dark min-[420px]:text-6xl sm:text-7xl lg:text-8xl"><SplitText text="Reimagined." onLoad start={3} /></em>
           </h1>
           <p className="mt-6 max-w-md text-[1.05rem] leading-relaxed text-ink/80">
             Upload a photo of your room and get clear, written design advice shaped around your style and budget. Edit your photo or try the 3D designer only if you want to.
@@ -54,7 +59,8 @@ export default function Hero({ onStart, onOpenDesigner }) {
             <a
               href="#redesign"
               onClick={onStart}
-              className="press group relative inline-flex min-h-12 items-center gap-3 overflow-hidden bg-brass px-8 py-4 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-white transition-colors duration-200 hover:bg-ink"
+              data-magnetic=""
+              className="press shine group relative inline-flex min-h-12 items-center gap-3 overflow-hidden bg-brass px-8 py-4 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-white transition-colors duration-200 hover:bg-ink"
             >
               Plan My Room <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
             </a>

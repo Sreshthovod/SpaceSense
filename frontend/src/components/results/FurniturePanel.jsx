@@ -47,7 +47,7 @@ function ProductCard({ item, index, checked, onToggle }) {
   const searchLinks = links.filter((l) => l.kind === 'search')
 
   return (
-    <li className={`lift group/card flex flex-col overflow-hidden rounded-2xl border p-4 transition-colors ${checked ? 'border-sage bg-sage/5' : 'border-line bg-white'}`} style={{ '--i': Math.min(index, 8) }}>
+    <li className={`spotlight lift group/card flex flex-col overflow-hidden rounded-2xl border p-4 transition-colors ${checked ? 'border-sage bg-sage/5' : 'border-line bg-white'}`} style={{ '--i': Math.min(index, 8) }}>
       <ProductImage item={item} />
       <div className="mt-3 flex flex-wrap gap-1.5 text-[11px] font-semibold">
         {priced ? (
